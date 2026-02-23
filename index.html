@@ -700,13 +700,6 @@
           <div class="notif-badge" id="notifBadge">0</div>
         </div>
         <span class="wallet-pill" id="walletPill">Connected</span>
-        <!-- Login & Register buttons -->
-        <button class="btn-nav-login"    onclick="openAuthModal('login')">
-          <i class="fas fa-sign-in-alt"></i> Login
-        </button>
-        <button class="btn-nav-register" onclick="openAuthModal('register')">
-          <i class="fas fa-user-plus"></i> Register
-        </button>
         <button class="btn-connect-nav" id="connect" onclick="connectWallet()">
           <i class="fas fa-plug"></i> Connect Wallet
         </button>
@@ -1653,5 +1646,6 @@
     setTimeout(()=>addNotification('blue','fas fa-link','Smart Contract Ready','Medical Lending smart contract is live on Cardano Preprod. Connect wallet to begin.','just now','lending'), 14000);
   </script>
 
+<script type="module" src="app.js" defer></script>
 </body>
 </html>
