@@ -1,72 +1,1703 @@
 <?php
-
 declare(strict_types=1);
 
-require_once __DIR__ . '/includes/auth.php';
-
+require_once __DIR__ . '/includes/auth.php'; // adjust if your path differs
+startSecureSession();
 requireLogin();
 
-startSecureSession();
+// optional: show logged in email anywhere
 $userEmail = $_SESSION['user_email'] ?? '';
 ?>
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Application</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #eff6ff, #ecfeff);
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            padding: 1rem;
-        }
-        .panel {
-            width: min(640px, 96vw);
-            background: #ffffff;
-            border-radius: 14px;
-            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            text-align: center;
-        }
-        h1 { margin-top: 0; color: #0f172a; }
-        p { color: #334155; font-size: 1.05rem; }
-        .email {
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            display: inline-block;
-            padding: 0.45rem 0.75rem;
-            margin: 1rem 0;
-            font-weight: 600;
-            color: #0f172a;
-        }
-        form { margin-top: 1rem; }
-        button {
-            background: #dc2626;
-            border: none;
-            color: #fff;
-            padding: 0.7rem 1rem;
-            border-radius: 8px;
-            font-size: 1rem;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body>
-    <section class="panel">
-        <h1>Application Page</h1>
-        <p>You are logged in as:</p>
-        <div class="email"><?= htmlspecialchars($userEmail, ENT_QUOTES, 'UTF-8') ?></div>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coxygen Medical Center — Advanced Healthcare on Cardano</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script src="https://unpkg.com/lucid-cardano@0.10.11/web/mod.js" type="module"></script>
 
-        <form action="logout.php" method="post">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generateCsrfToken(), ENT_QUOTES, 'UTF-8') ?>">
-            <button type="submit">Logout</button>
-        </form>
-    </section>
+  <style>
+    :root {
+      --navy:        #0a1628;
+      --navy-mid:    #112244;
+      --blue:        #1565c0;
+      --blue-mid:    #1976d2;
+      --sky:         #0ea5e9;
+      --sky-light:   #38bdf8;
+      --teal:        #0d9488;
+      --gold:        #c9a84c;
+      --gold-light:  #e4c97a;
+      --white:       #ffffff;
+      --off-white:   #f0f4f8;
+      --slate:       #64748b;
+      --slate-light: #94a3b8;
+      --success:     #10b981;
+      --danger:      #ef4444;
+      --warning:     #f59e0b;
+
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-body:    'DM Sans', system-ui, sans-serif;
+      --font-mono:    'DM Mono', 'Courier New', monospace;
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 22px;
+      --radius-xl: 32px;
+
+      --shadow-sm: 0 2px 12px rgba(0,0,0,.06);
+      --shadow-md: 0 8px 32px rgba(0,0,0,.10);
+      --shadow-lg: 0 20px 60px rgba(0,0,0,.16);
+      --shadow-blue: 0 8px 32px rgba(21,101,192,.28);
+
+      --nav-h: 76px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-body);
+      background: var(--white);
+      color: var(--navy);
+      overflow-x: hidden;
+      line-height: 1.65;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--off-white); }
+    ::-webkit-scrollbar-thumb { background: var(--blue-mid); border-radius: 6px; }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Notification System ── */
+    .notif-bell-wrap { position: relative; display: flex; align-items: center; }
+    .notif-bell {
+      width: 42px; height: 42px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      display: grid; place-items: center;
+      cursor: pointer; color: rgba(255,255,255,.75);
+      font-size: 16px; transition: all .2s; position: relative;
+    }
+    .notif-bell:hover { background: rgba(255,255,255,.14); color: white; }
+    .notif-badge {
+      position: absolute; top: -5px; right: -5px;
+      min-width: 18px; height: 18px;
+      background: var(--danger); color: white;
+      font-size: 10px; font-weight: 700;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 4px; border: 2px solid var(--navy);
+      opacity: 0; transform: scale(0);
+      transition: all .3s cubic-bezier(.34,1.56,.64,1);
+      pointer-events: none;
+    }
+    .notif-badge.show { opacity: 1; transform: scale(1); }
+    .notif-badge.pulse { animation: badgePulse 0.6s ease; }
+    @keyframes badgePulse {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.5); }
+      70%  { transform: scale(.9); }
+      100% { transform: scale(1); }
+    }
+
+    .notif-panel {
+      position: fixed;
+      top: calc(var(--nav-h) + 10px); right: 20px;
+      width: 380px;
+      background: white;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 24px 80px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.06);
+      border: 1px solid rgba(0,0,0,.06);
+      z-index: 8990; overflow: hidden;
+      opacity: 0; transform: translateY(-10px) scale(.97);
+      pointer-events: none;
+      transition: opacity .25s, transform .25s cubic-bezier(.34,1.3,.64,1);
+    }
+    .notif-panel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: all; }
+
+    .notif-panel-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--off-white);
+      background: var(--navy);
+    }
+    .notif-panel-head h4 {
+      font-family: var(--font-display);
+      font-size: 18px; font-weight: 700; color: white;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .notif-panel-head h4 i { color: var(--sky); }
+    .notif-head-right { display: flex; align-items: center; gap: 10px; }
+    .notif-mark-all {
+      font-size: 11px; font-weight: 600; color: var(--sky-light);
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+      padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all .2s;
+    }
+    .notif-mark-all:hover { background: rgba(255,255,255,.16); }
+    .notif-close-btn {
+      width: 28px; height: 28px;
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+      border-radius: 6px; display: grid; place-items: center;
+      cursor: pointer; color: rgba(255,255,255,.65); font-size: 12px; transition: all .2s;
+    }
+    .notif-close-btn:hover { background: rgba(239,68,68,.3); color: #fca5a5; }
+
+    .notif-tabs {
+      display: flex; gap: 4px; padding: 12px 16px 0;
+      border-bottom: 1px solid var(--off-white); background: white;
+    }
+    .notif-tab {
+      padding: 8px 14px; font-size: 12px; font-weight: 600;
+      border-radius: 6px 6px 0 0; cursor: pointer; color: var(--slate);
+      border-bottom: 2px solid transparent; transition: all .2s;
+    }
+    .notif-tab:hover { color: var(--blue); }
+    .notif-tab.active { color: var(--blue); border-bottom-color: var(--blue); background: rgba(21,101,192,.05); }
+
+    .notif-list { max-height: 400px; overflow-y: auto; padding: 8px 0; }
+    .notif-list::-webkit-scrollbar { width: 4px; }
+    .notif-list::-webkit-scrollbar-thumb { background: var(--slate-light); border-radius: 4px; }
+
+    .notif-item {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 14px 20px; cursor: pointer; transition: background .15s;
+      position: relative; animation: notifSlideIn .35s cubic-bezier(.22,.68,0,1.1) backwards;
+    }
+    @keyframes notifSlideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    .notif-item:hover { background: var(--off-white); }
+    .notif-item.unread { background: rgba(14,165,233,.04); }
+    .notif-item.unread::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px; background: var(--sky); border-radius: 0 2px 2px 0;
+    }
+    .notif-icon { width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; font-size: 18px; }
+    .notif-icon.blue   { background: linear-gradient(135deg,#e8f4fe,#d0e8fa); color: var(--blue); }
+    .notif-icon.green  { background: linear-gradient(135deg,#dcfce7,#bbf7d0); color: var(--success); }
+    .notif-icon.red    { background: linear-gradient(135deg,#fee2e2,#fecaca); color: var(--danger); }
+    .notif-icon.yellow { background: linear-gradient(135deg,#fef9c3,#fef08a); color: var(--warning); }
+    .notif-icon.navy   { background: linear-gradient(135deg,#e0e7ef,#c7d2e0); color: var(--navy); }
+    .notif-body { flex: 1; min-width: 0; }
+    .notif-body .ntitle { font-size: 13.5px; font-weight: 600; color: var(--navy); line-height: 1.35; margin-bottom: 3px; }
+    .notif-body .ndesc  { font-size: 12.5px; color: var(--slate); line-height: 1.5; margin-bottom: 5px; }
+    .notif-body .ntime  { font-size: 11px; color: var(--slate-light); display: flex; align-items: center; gap: 4px; }
+    .notif-body .ntime i { font-size: 9px; }
+    .notif-dismiss {
+      width: 22px; height: 22px; background: transparent; border: none;
+      border-radius: 4px; display: grid; place-items: center;
+      cursor: pointer; color: var(--slate-light); font-size: 11px;
+      flex-shrink: 0; transition: all .15s; margin-top: 2px;
+    }
+    .notif-dismiss:hover { background: rgba(239,68,68,.1); color: var(--danger); }
+    .notif-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 20px; gap: 12px; color: var(--slate-light); }
+    .notif-empty i { font-size: 40px; opacity: .35; }
+    .notif-empty p { font-size: 14px; text-align: center; }
+    .notif-panel-footer { padding: 12px 20px; border-top: 1px solid var(--off-white); text-align: center; background: var(--off-white); }
+    .notif-panel-footer a { font-size: 13px; font-weight: 600; color: var(--blue); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .notif-panel-footer a:hover { text-decoration: underline; }
+
+    /* ── Toast ── */
+    .toast-container { position: fixed; bottom: 28px; right: 28px; display: flex; flex-direction: column-reverse; gap: 10px; z-index: 9999; pointer-events: none; }
+    .toast {
+      display: flex; align-items: center; gap: 14px;
+      background: white; border-radius: var(--radius-md);
+      padding: 14px 18px; min-width: 300px; max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.16), 0 2px 6px rgba(0,0,0,.06);
+      border-left: 4px solid var(--sky); pointer-events: all;
+      animation: toastIn .4s cubic-bezier(.22,.68,0,1.2) forwards;
+      position: relative; overflow: hidden;
+    }
+    .toast.removing { animation: toastOut .35s ease forwards; }
+    @keyframes toastIn  { from { opacity: 0; transform: translateX(40px) scale(.96); } to { opacity: 1; transform: translateX(0) scale(1); } }
+    @keyframes toastOut { from { opacity: 1; transform: translateX(0) scale(1); max-height: 80px; } to { opacity: 0; transform: translateX(40px) scale(.95); max-height: 0; margin-bottom: -10px; } }
+    .toast-progress { position: absolute; bottom: 0; left: 0; height: 3px; background: var(--sky); border-radius: 0 2px 0 0; animation: toastProgress var(--toast-dur, 4s) linear forwards; }
+    @keyframes toastProgress { from { width: 100%; } to { width: 0%; } }
+    .toast.success { border-left-color: var(--success); } .toast.success .toast-progress { background: var(--success); }
+    .toast.error   { border-left-color: var(--danger);  } .toast.error   .toast-progress { background: var(--danger);  }
+    .toast.warning { border-left-color: var(--warning); } .toast.warning .toast-progress { background: var(--warning); }
+    .toast-icon { width: 38px; height: 38px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; font-size: 18px; }
+    .toast.success .toast-icon { background: linear-gradient(135deg,#dcfce7,#bbf7d0); color: var(--success); }
+    .toast.error   .toast-icon { background: linear-gradient(135deg,#fee2e2,#fecaca); color: var(--danger);  }
+    .toast.warning .toast-icon { background: linear-gradient(135deg,#fef9c3,#fef08a); color: #92400e;        }
+    .toast         .toast-icon { background: linear-gradient(135deg,#e8f4fe,#d0e8fa); color: var(--blue);    }
+    .toast-content { flex: 1; min-width: 0; }
+    .toast-title { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
+    .toast-msg   { font-size: 12.5px; color: var(--slate); line-height: 1.45; }
+    .toast-close { width: 24px; height: 24px; background: transparent; border: none; border-radius: 4px; cursor: pointer; color: var(--slate-light); font-size: 12px; display: grid; place-items: center; flex-shrink: 0; transition: all .15s; }
+    .toast-close:hover { background: var(--off-white); color: var(--navy); }
+
+    /* ── Navigation ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: rgba(10,22,40,.92);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px; z-index: 9000; transition: background .3s;
+    }
+    nav.scrolled { background: rgba(10,22,40,.98); }
+
+    .nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .nav-logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--sky), var(--blue));
+      border-radius: 12px; display: grid; place-items: center;
+      font-size: 20px; color: white; box-shadow: 0 4px 16px rgba(14,165,233,.4); flex-shrink: 0;
+    }
+    .nav-logo-text { line-height: 1.1; }
+    .nav-logo-text .name    { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: white; letter-spacing: -.2px; }
+    .nav-logo-text .tagline { font-size: 10px; font-weight: 500; color: var(--sky-light); letter-spacing: .6px; text-transform: uppercase; }
+
+    .nav-links { display: flex; align-items: center; gap: 4px; list-style: none; }
+    .nav-links a {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px; font-size: 13px; font-weight: 500;
+      color: rgba(255,255,255,.75); text-decoration: none;
+      border-radius: var(--radius-sm); transition: all .2s; cursor: pointer; white-space: nowrap;
+    }
+    .nav-links a:hover, .nav-links a.active { color: white; background: rgba(255,255,255,.08); }
+    .nav-links a.active { color: var(--sky-light); }
+
+    /* ── NEW: Login & Register buttons ── */
+    .btn-nav-login {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 18px;
+      background: transparent;
+      color: rgba(255,255,255,.82);
+      border: 1.5px solid rgba(255,255,255,.22);
+      border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600;
+      font-family: var(--font-body);
+      cursor: pointer; transition: all .2s; white-space: nowrap;
+    }
+    .btn-nav-login:hover {
+      background: rgba(255,255,255,.09);
+      border-color: rgba(255,255,255,.5);
+      color: white;
+    }
+    .btn-nav-register {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 18px;
+      background: rgba(14,165,233,.14);
+      color: var(--sky-light);
+      border: 1.5px solid rgba(14,165,233,.42);
+      border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600;
+      font-family: var(--font-body);
+      cursor: pointer; transition: all .22s; white-space: nowrap;
+    }
+    .btn-nav-register:hover {
+      background: rgba(14,165,233,.3);
+      border-color: var(--sky);
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(14,165,233,.25);
+    }
+
+    .btn-connect-nav {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 20px;
+      background: linear-gradient(135deg, var(--sky), var(--blue));
+      color: white !important; border: none;
+      border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all .25s; box-shadow: 0 4px 16px rgba(14,165,233,.3);
+    }
+    .btn-connect-nav:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(14,165,233,.45); }
+
+    .nav-hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 8px; }
+    .nav-hamburger span { display: block; width: 24px; height: 2px; background: white; border-radius: 2px; transition: all .3s; }
+
+    /* ── Auth Modal Styles ── */
+    .auth-modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.78); backdrop-filter: blur(10px);
+      z-index: 10000; align-items: center; justify-content: center;
+    }
+    .auth-modal-overlay.open { display: flex; }
+    .auth-modal-box {
+      background: white; border-radius: var(--radius-xl);
+      width: min(460px, 94vw);
+      box-shadow: 0 32px 80px rgba(0,0,0,.28);
+      overflow: hidden;
+      animation: authModalIn .32s cubic-bezier(.22,.68,0,1.1);
+    }
+    @keyframes authModalIn { from { opacity: 0; transform: scale(.93) translateY(14px); } to { opacity: 1; transform: none; } }
+    .auth-modal-header {
+      background: linear-gradient(145deg, var(--navy), var(--navy-mid));
+      padding: 32px 36px 28px;
+      position: relative;
+    }
+    .auth-modal-header .close-x {
+      position: absolute; top: 18px; right: 20px;
+      width: 30px; height: 30px;
+      background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);
+      border-radius: 8px; display: grid; place-items: center;
+      cursor: pointer; color: rgba(255,255,255,.6); font-size: 13px; transition: all .18s;
+    }
+    .auth-modal-header .close-x:hover { background: rgba(239,68,68,.3); color: #fca5a5; }
+    .auth-modal-logo {
+      width: 50px; height: 50px;
+      background: linear-gradient(135deg, var(--sky), var(--blue));
+      border-radius: 14px; display: grid; place-items: center;
+      font-size: 22px; color: white; margin-bottom: 16px;
+      box-shadow: 0 6px 20px rgba(14,165,233,.4);
+    }
+    .auth-modal-header h2 { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: white; margin-bottom: 6px; }
+    .auth-modal-header p  { font-size: 14px; color: rgba(255,255,255,.58); }
+    .auth-modal-body { padding: 32px 36px 36px; }
+    .auth-field { margin-bottom: 18px; }
+    .auth-field label { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 7px; }
+    .auth-input {
+      width: 100%; padding: 12px 16px;
+      background: var(--off-white); border: 1.5px solid #dde5f0;
+      border-radius: var(--radius-sm); font-size: 14px;
+      font-family: var(--font-body); color: var(--navy); transition: border-color .2s;
+    }
+    .auth-input:focus { outline: none; border-color: var(--sky); box-shadow: 0 0 0 3px rgba(14,165,233,.12); }
+    .auth-input::placeholder { color: var(--slate-light); }
+    .auth-input-wrap { position: relative; }
+    .auth-input-wrap .eye-toggle {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--slate-light); font-size: 14px; padding: 4px; transition: color .18s;
+    }
+    .auth-input-wrap .eye-toggle:hover { color: var(--navy); }
+    .auth-btn-primary {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, var(--sky), var(--blue));
+      color: white; border: none; border-radius: var(--radius-sm);
+      font-size: 15px; font-weight: 700; font-family: var(--font-body);
+      cursor: pointer; transition: all .22s;
+      box-shadow: var(--shadow-blue); margin-top: 8px;
+    }
+    .auth-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(14,165,233,.45); }
+    .auth-switch { text-align: center; margin-top: 20px; font-size: 13.5px; color: var(--slate); }
+    .auth-switch a { color: var(--blue); font-weight: 600; cursor: pointer; text-decoration: none; }
+    .auth-switch a:hover { text-decoration: underline; }
+    .auth-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; }
+    .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: #e8eff7; }
+    .auth-divider span { font-size: 12px; color: var(--slate-light); font-weight: 500; white-space: nowrap; }
+    .auth-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .auth-check-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 18px; }
+    .auth-check-row input[type="checkbox"] { margin-top: 2px; accent-color: var(--blue); width: 15px; height: 15px; flex-shrink: 0; }
+    .auth-check-row label { font-size: 13px; color: var(--slate); line-height: 1.5; cursor: pointer; }
+    .auth-check-row label a { color: var(--blue); font-weight: 600; }
+    .forgot-link { float: right; font-size: 12px; color: var(--blue); font-weight: 600; cursor: pointer; }
+    .forgot-link:hover { text-decoration: underline; }
+
+    /* ── Page Wrap ── */
+    .page-wrap { min-height: 100vh; padding-top: var(--nav-h); }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative; min-height: calc(100vh - var(--nav-h));
+      background: linear-gradient(160deg, var(--navy) 0%, var(--navy-mid) 60%, #162a50 100%);
+      display: flex; align-items: center; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 60% 80% at 80% 40%, rgba(14,165,233,.12) 0%, transparent 60%),
+                  radial-gradient(ellipse 40% 40% at 20% 80%, rgba(13,148,136,.08) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    .hero-deco { position: absolute; border-radius: 50%; pointer-events: none; }
+    .hero-deco-1 { width: 480px; height: 480px; right: -100px; top: -80px; border: 1px solid rgba(14,165,233,.12); animation: rotateRing 20s linear infinite; }
+    .hero-deco-2 { width: 340px; height: 340px; right: -30px; top: -10px; border: 1px solid rgba(14,165,233,.18); animation: rotateRing 14s linear infinite reverse; }
+    @keyframes rotateRing { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .hero-inner {
+      max-width: 1200px; margin: 0 auto; padding: 80px 40px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
+      align-items: center; position: relative; z-index: 2;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(14,165,233,.15); border: 1px solid rgba(14,165,233,.35);
+      color: var(--sky-light); font-size: 12px; font-weight: 600;
+      letter-spacing: .8px; text-transform: uppercase;
+      padding: 6px 14px; border-radius: 50px; margin-bottom: 24px;
+    }
+    .hero-badge i { font-size: 10px; }
+    .hero h1 { font-family: var(--font-display); font-size: clamp(38px, 4vw, 58px); font-weight: 800; color: white; line-height: 1.12; margin-bottom: 22px; letter-spacing: -1px; }
+    .hero h1 .highlight { background: linear-gradient(90deg, var(--sky-light), var(--gold-light)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 17px; color: rgba(255,255,255,.72); line-height: 1.7; margin-bottom: 36px; max-width: 500px; }
+    .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; font-family: var(--font-body); cursor: pointer; transition: all .25s; border: none; text-decoration: none; }
+    .btn-primary { background: linear-gradient(135deg, var(--sky), var(--blue)); color: white; box-shadow: var(--shadow-blue); }
+    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 36px rgba(14,165,233,.5); }
+    .btn-outline { background: transparent; color: white; border: 1.5px solid rgba(255,255,255,.35); }
+    .btn-outline:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.6); transform: translateY(-2px); }
+    .btn-success { background: linear-gradient(135deg, var(--success), #0a9b6d); color: white; box-shadow: 0 6px 20px rgba(16,185,129,.3); }
+    .btn-success:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(16,185,129,.45); }
+    .btn-warning { background: linear-gradient(135deg, var(--warning), #d97706); color: white; box-shadow: 0 6px 20px rgba(245,158,11,.3); }
+    .btn-warning:hover { transform: translateY(-2px); }
+    .btn-sm { padding: 9px 18px; font-size: 13px; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
+
+    .hero-stats { display: flex; gap: 32px; margin-top: 44px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,.1); }
+    .hero-stat .num   { font-family: var(--font-display); font-size: 30px; font-weight: 700; color: white; line-height: 1; }
+    .hero-stat .label { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.5); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+
+    .hero-visual { position: relative; }
+    .hero-img-card { background: linear-gradient(145deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); border: 1px solid rgba(255,255,255,.1); border-radius: var(--radius-xl); padding: 6px; box-shadow: var(--shadow-lg); animation: floatCard 6s ease-in-out infinite; }
+    @keyframes floatCard { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+    .hero-img-card img { width: 100%; height: 440px; object-fit: cover; border-radius: calc(var(--radius-xl) - 6px); display: block; }
+    .hero-img-placeholder { width: 100%; height: 440px; border-radius: calc(var(--radius-xl) - 6px); background: linear-gradient(145deg, #162a50, #1a3a68); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: rgba(255,255,255,.4); }
+    .hero-img-placeholder i { font-size: 64px; color: rgba(14,165,233,.4); }
+
+    .hero-float-badge { position: absolute; bottom: -20px; left: -20px; background: white; border-radius: var(--radius-md); padding: 16px 20px; box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 12px; animation: floatBadge 4s ease-in-out infinite; }
+    @keyframes floatBadge { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    .hero-float-badge .badge-icon { width: 44px; height: 44px; background: linear-gradient(135deg, var(--sky), var(--blue)); border-radius: 10px; display: grid; place-items: center; font-size: 22px; color: white; }
+    .hero-float-badge .badge-text .t1 { font-size: 16px; font-weight: 700; color: var(--navy); }
+    .hero-float-badge .badge-text .t2 { font-size: 11px; color: var(--slate); }
+
+    /* ── Trust Bar ── */
+    .trust-bar { background: var(--navy); padding: 28px 40px; display: flex; align-items: center; justify-content: center; gap: 48px; flex-wrap: wrap; }
+    .trust-item { display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,.55); font-size: 13px; font-weight: 500; }
+    .trust-item i { color: var(--sky); font-size: 16px; }
+    .trust-item span { color: rgba(255,255,255,.75); }
+    .trust-divider { width: 1px; height: 24px; background: rgba(255,255,255,.12); }
+
+    /* ── Section Headers ── */
+    .section-header { text-align: center; margin-bottom: 60px; }
+    .section-label { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--sky); margin-bottom: 14px; }
+    .section-label::before, .section-label::after { content: ''; display: block; width: 28px; height: 1.5px; background: linear-gradient(90deg, var(--sky), transparent); }
+    .section-label::after { transform: scaleX(-1); }
+    .section-header h2 { font-family: var(--font-display); font-size: clamp(30px, 3vw, 44px); font-weight: 700; color: var(--navy); line-height: 1.18; letter-spacing: -.5px; margin-bottom: 16px; }
+    .section-header p { font-size: 16px; color: var(--slate); max-width: 580px; margin: 0 auto; line-height: 1.7; }
+
+    /* ── Services ── */
+    .services-section { padding: 100px 40px; max-width: 1200px; margin: 0 auto; }
+    .services-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .service-card { background: white; border: 1.5px solid #e8eff7; border-radius: var(--radius-lg); padding: 32px; transition: all .3s; position: relative; overflow: hidden; }
+    .service-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--sky), var(--blue)); transform: scaleX(0); transform-origin: left; transition: transform .35s; }
+    .service-card:hover { border-color: transparent; box-shadow: var(--shadow-md); transform: translateY(-6px); }
+    .service-card:hover::before { transform: scaleX(1); }
+    .service-icon { width: 60px; height: 60px; background: linear-gradient(135deg, #e8f4fe, #d0e8fa); border-radius: var(--radius-md); display: grid; place-items: center; font-size: 28px; margin-bottom: 20px; }
+    .service-card h3 { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--navy); margin-bottom: 10px; }
+    .service-card p  { font-size: 14px; color: var(--slate); line-height: 1.65; }
+    .service-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; font-size: 13px; font-weight: 600; color: var(--blue); text-decoration: none; transition: gap .2s; }
+    .service-link:hover { gap: 10px; }
+
+    /* ── Clinical Video Section ── */
+    .clinical-video-section { padding: 0 40px 100px; max-width: 1200px; margin: 0 auto; }
+    .video-card { background: linear-gradient(145deg, #ffffff, #f6f9fc); border: 1px solid #e3ebf6; border-radius: var(--radius-xl); padding: 36px; box-shadow: var(--shadow-md); display: grid; grid-template-columns: 1fr 1.1fr; gap: 28px; align-items: center; }
+    .video-copy h3 { font-family: var(--font-display); font-size: 32px; line-height: 1.2; color: var(--navy); margin-bottom: 14px; }
+    .video-copy p { font-size: 15px; color: var(--slate); line-height: 1.75; margin-bottom: 18px; }
+    .video-copy ul { list-style: none; display: grid; gap: 10px; margin-bottom: 20px; }
+    .video-copy li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--navy-mid); font-weight: 500; }
+    .video-copy li i { color: var(--success); }
+    .btn-docs { display: inline-flex; align-items: center; gap: 8px; background: var(--navy); color: white; text-decoration: none; padding: 11px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; transition: all .2s; }
+    .btn-docs:hover { transform: translateY(-2px); background: var(--blue); box-shadow: var(--shadow-blue); }
+    .video-embed-wrap { border-radius: var(--radius-lg); overflow: hidden; border: 1px solid #d9e4f2; box-shadow: var(--shadow-sm); background: #000; aspect-ratio: 16 / 9; }
+    .video-embed-wrap iframe { width: 100%; height: 100%; border: none; }
+
+    /* ── Page Hero ── */
+    .page-hero { background: linear-gradient(160deg, var(--navy) 0%, var(--navy-mid) 100%); padding: 80px 40px 60px; text-align: center; position: relative; overflow: hidden; }
+    .page-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 50% 80% at 50% 100%, rgba(14,165,233,.1) 0%, transparent 60%); }
+    .page-hero h1 { font-family: var(--font-display); font-size: clamp(32px, 4vw, 52px); font-weight: 800; color: white; letter-spacing: -1px; position: relative; z-index: 1; }
+    .page-hero p  { font-size: 16px; color: rgba(255,255,255,.65); max-width: 540px; margin: 16px auto 0; position: relative; z-index: 1; }
+
+    .breadcrumb-bar { background: var(--off-white); padding: 12px 40px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--slate); border-bottom: 1px solid #e8eff7; }
+    .breadcrumb-bar i { font-size: 11px; }
+    .breadcrumb-bar .current { color: var(--blue); font-weight: 600; }
+
+    /* ── Departments ── */
+    .dept-section { padding: 80px 40px; max-width: 1200px; margin: 0 auto; }
+    .dept-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; }
+    .dept-card { background: white; border-radius: var(--radius-lg); overflow: hidden; border: 1.5px solid #e8eff7; box-shadow: var(--shadow-sm); transition: all .3s; }
+    .dept-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-md); border-color: var(--sky); }
+    .dept-img-wrap { width: 100%; height: 220px; overflow: hidden; }
+    .dept-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .dept-img-placeholder { width: 100%; height: 220px; background: linear-gradient(145deg, #e8f4fe, #d0e8fa); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+    .dept-img-placeholder i { font-size: 52px; color: var(--blue); opacity: .4; }
+    .dept-body { padding: 28px 28px 24px; }
+    .dept-badge { display: inline-block; background: linear-gradient(135deg, #e8f4fe, #d0e8fa); color: var(--blue); font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; padding: 4px 12px; border-radius: 50px; margin-bottom: 12px; }
+    .dept-card h3 { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--navy); margin-bottom: 12px; }
+    .dept-card p  { font-size: 14px; color: var(--slate); line-height: 1.7; margin-bottom: 16px; }
+    .dept-services { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .dept-tag { background: var(--off-white); color: var(--slate); font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 50px; }
+    .dept-avail { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--success); font-weight: 600; }
+    .dept-avail::before { content: ''; width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 0 3px rgba(16,185,129,.2); }
+
+    /* ── About ── */
+    .about-section { padding: 80px 40px; max-width: 1200px; margin: 0 auto; }
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; margin-bottom: 80px; }
+    .about-img-wrap { position: relative; }
+    .about-img { width: 100%; height: 420px; object-fit: cover; border-radius: var(--radius-xl); }
+    .about-img-placeholder { width: 100%; height: 420px; border-radius: var(--radius-xl); background: linear-gradient(145deg, #e8f4fe, #d0e8fa); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: var(--slate); }
+    .about-float-card { position: absolute; bottom: -20px; right: -20px; background: var(--navy); border-radius: var(--radius-md); padding: 20px 24px; display: flex; align-items: center; gap: 16px; box-shadow: var(--shadow-lg); }
+    .about-float-card .num { font-family: var(--font-display); font-size: 36px; font-weight: 800; color: var(--sky); }
+    .about-float-card .lbl { font-size: 13px; color: rgba(255,255,255,.6); font-weight: 500; }
+    .about-content h2 { font-family: var(--font-display); font-size: 38px; font-weight: 700; color: var(--navy); line-height: 1.2; letter-spacing: -.5px; margin-bottom: 20px; }
+    .about-content p { font-size: 15px; color: var(--slate); line-height: 1.75; margin-bottom: 16px; }
+    .about-values { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 32px; }
+    .value-box { background: var(--off-white); border-radius: var(--radius-md); padding: 20px; }
+    .value-box h4 { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+    .value-box p  { font-size: 13px; color: var(--slate); line-height: 1.6; }
+    .value-icon { font-size: 24px; margin-bottom: 8px; }
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin: 60px 0; }
+    .stat-box { background: linear-gradient(145deg, var(--navy), var(--navy-mid)); border-radius: var(--radius-lg); padding: 36px 24px; text-align: center; position: relative; overflow: hidden; }
+    .stat-box::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, var(--sky), var(--teal)); }
+    .stat-box .num  { font-family: var(--font-display); font-size: 44px; font-weight: 800; color: white; line-height: 1; }
+    .stat-box .lbl  { font-size: 13px; color: rgba(255,255,255,.55); margin-top: 8px; }
+    .stat-box .icon { font-size: 32px; color: rgba(14,165,233,.35); margin-bottom: 12px; }
+    .why-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .why-card { padding: 32px; border-radius: var(--radius-lg); border: 1.5px solid #e8eff7; transition: all .3s; }
+    .why-card:hover { border-color: var(--sky); box-shadow: var(--shadow-sm); }
+    .why-card i  { font-size: 32px; color: var(--sky); margin-bottom: 14px; display: block; }
+    .why-card h4 { font-size: 17px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+    .why-card p  { font-size: 14px; color: var(--slate); line-height: 1.65; }
+
+    /* ── Contact ── */
+    .contact-section { padding: 80px 40px; max-width: 1200px; margin: 0 auto; }
+    .contact-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 48px; }
+    .contact-info h3 { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--navy); margin-bottom: 20px; }
+    .contact-info p { font-size: 15px; color: var(--slate); line-height: 1.7; margin-bottom: 32px; }
+    .contact-item { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
+    .contact-item-icon { width: 46px; height: 46px; flex-shrink: 0; background: linear-gradient(135deg, #e8f4fe, #d0e8fa); border-radius: 12px; display: grid; place-items: center; font-size: 18px; color: var(--blue); }
+    .contact-item .details .title { font-size: 13px; color: var(--slate); margin-bottom: 2px; font-weight: 500; }
+    .contact-item .details .val   { font-size: 15px; font-weight: 600; color: var(--navy); }
+    .map-placeholder { background: linear-gradient(145deg, #e8f4fe, #d0e8fa); border-radius: var(--radius-lg); height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; margin-top: 32px; border: 2px dashed rgba(21,101,192,.2); }
+    .map-placeholder i { font-size: 40px; color: var(--blue); opacity: .4; }
+    .map-placeholder p { font-size: 13px; color: var(--slate); }
+    .contact-form { background: var(--off-white); border-radius: var(--radius-xl); padding: 40px; }
+    .contact-form h3 { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--navy); margin-bottom: 28px; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
+    .form-input { width: 100%; padding: 13px 16px; background: white; border: 1.5px solid #dde5f0; border-radius: var(--radius-sm); font-size: 14px; font-family: var(--font-body); color: var(--navy); transition: border-color .2s; }
+    .form-input:focus { outline: none; border-color: var(--sky); box-shadow: 0 0 0 3px rgba(14,165,233,.12); }
+    .form-input::placeholder { color: var(--slate-light); }
+    textarea.form-input { resize: vertical; min-height: 120px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* ── Lending ── */
+    .lending-section { padding: 80px 40px; max-width: 1200px; margin: 0 auto; }
+    .lending-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    .lending-card { background: linear-gradient(145deg, var(--navy), var(--navy-mid)); border-radius: var(--radius-xl); padding: 36px; border: 1px solid rgba(255,255,255,.08); box-shadow: var(--shadow-lg); }
+    .lending-card-white { background: white; border-radius: var(--radius-xl); padding: 36px; border: 1.5px solid #e8eff7; box-shadow: var(--shadow-sm); }
+    .lend-section-title { display: flex; align-items: center; gap: 12px; font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,.08); color: white; }
+    .lend-section-title i { color: var(--sky); }
+    .lend-section-title-dark { display: flex; align-items: center; gap: 12px; font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1.5px solid #e8eff7; color: var(--navy); }
+    .lend-section-title-dark i { color: var(--sky); }
+    .wallet-info-box { background: rgba(15,23,42,.5); border-radius: var(--radius-md); padding: 20px; margin-bottom: 24px; }
+    .wallet-info-box p { font-size: 13px; color: rgba(255,255,255,.55); margin-bottom: 8px; word-break: break-all; }
+    .wallet-info-box strong { color: rgba(255,255,255,.85); }
+    .wallet-balance-row { display: flex; align-items: center; justify-content: space-between; background: rgba(14,165,233,.1); border-radius: var(--radius-sm); padding: 14px 18px; margin-top: 14px; border-left: 4px solid var(--sky); }
+    .wallet-balance-row .bal-label { font-size: 12px; color: rgba(255,255,255,.5); }
+    .wallet-balance-row .bal-value { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--sky-light); }
+    .lend-input-wrap-light { position: relative; }
+    .lend-input-wrap-light input { width: 100%; padding: 13px 52px 13px 16px; background: var(--off-white); border: 1.5px solid #dde5f0; border-radius: var(--radius-sm); font-size: 14px; font-family: var(--font-body); color: var(--navy); transition: border-color .2s; }
+    .lend-input-wrap-light input:focus { outline: none; border-color: var(--sky); }
+    .lend-input-wrap-light .unit { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--slate); }
+    .lend-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+    .warning-box { background: rgba(245,158,11,.08); border-left: 4px solid var(--warning); border-radius: var(--radius-sm); padding: 16px; display: flex; gap: 12px; margin-top: 20px; }
+    .warning-box i { color: var(--warning); flex-shrink: 0; margin-top: 2px; }
+    .contract-info { background: rgba(14,165,233,.05); border-radius: var(--radius-md); padding: 20px; border-left: 4px solid var(--sky); margin-bottom: 24px; }
+    .contract-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 13px; color: rgba(255,255,255,.7); }
+    .contract-item i { color: var(--sky); margin-top: 2px; flex-shrink: 0; }
+    .log-card { background: linear-gradient(145deg, var(--navy), var(--navy-mid)); border-radius: var(--radius-xl); padding: 36px; border: 1px solid rgba(255,255,255,.06); margin-top: 32px; }
+    .log-container { background: rgba(5,12,24,.6); border-radius: var(--radius-md); padding: 20px; min-height: 140px; max-height: 280px; overflow-y: auto; font-family: var(--font-mono); font-size: 13px; border: 1px solid rgba(255,255,255,.06); }
+    .log-entry { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .log-entry:last-child { border-bottom: none; margin-bottom: 0; }
+    .log-time { color: var(--sky); margin-right: 10px; font-size: 11px; }
+    .log-msg  { color: rgba(255,255,255,.7); }
+    .log-err  { color: #f87171; }
+    .log-ok   { color: var(--success); }
+    .log-warn { color: var(--warning); }
+
+    /* ── Confirm Modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: white; border-radius: var(--radius-xl); padding: 36px; width: min(480px, 92vw); box-shadow: var(--shadow-lg); animation: modalIn .3s ease; }
+    @keyframes modalIn { from { opacity: 0; transform: scale(.94) translateY(10px); } to { opacity: 1; transform: none; } }
+    .modal-box h3 { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--navy); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+    .modal-box h3 i { color: var(--sky); }
+    .modal-details { background: var(--off-white); border-radius: var(--radius-md); padding: 16px; margin: 16px 0; font-size: 14px; color: var(--slate); }
+    .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+    .modal-actions .btn { flex: 1; justify-content: center; }
+    .loading-modal .modal-box { text-align: center; }
+    .loading-spinner { width: 48px; height: 48px; border: 4px solid rgba(14,165,233,.15); border-top-color: var(--sky); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Footer ── */
+    footer { background: var(--navy); padding: 64px 40px 32px; color: rgba(255,255,255,.65); }
+    .footer-top { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; padding-bottom: 48px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .footer-brand .logo-name { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: white; margin-bottom: 12px; }
+    .footer-brand p { font-size: 14px; line-height: 1.7; max-width: 280px; }
+    .footer-col h4 { font-size: 14px; font-weight: 700; color: white; margin-bottom: 20px; letter-spacing: .3px; }
+    .footer-col ul { list-style: none; }
+    .footer-col ul li { margin-bottom: 10px; }
+    .footer-col ul li a { font-size: 13.5px; color: rgba(255,255,255,.55); text-decoration: none; transition: color .2s; cursor: pointer; }
+    .footer-col ul li a:hover { color: var(--sky); }
+    .footer-bottom { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding-top: 28px; font-size: 13px; }
+    .footer-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(14,165,233,.12); border: 1px solid rgba(14,165,233,.25); color: var(--sky); padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 600; }
+
+    /* ── Wallet pill ── */
+    .wallet-pill { display: none; align-items: center; gap: 8px; background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); color: var(--success); padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 600; }
+    .wallet-pill.visible { display: inline-flex; }
+    .wallet-pill::before { content: ''; width: 7px; height: 7px; background: var(--success); border-radius: 50%; box-shadow: 0 0 0 3px rgba(16,185,129,.2); }
+
+    .qs-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 60px; }
+    .qs-tag { display: flex; align-items: center; gap: 7px; background: white; border: 1.5px solid #e8eff7; border-radius: 50px; padding: 8px 16px; font-size: 13px; font-weight: 500; color: var(--slate); box-shadow: var(--shadow-sm); cursor: pointer; transition: all .2s; }
+    .qs-tag:hover { border-color: var(--sky); color: var(--blue); }
+    .qs-tag i { color: var(--sky); }
+
+    /* ── Responsive ── */
+    @media (max-width: 1024px) {
+      .hero-inner { grid-template-columns: 1fr; gap: 40px; }
+      .hero-visual { display: none; }
+      .services-grid { grid-template-columns: 1fr 1fr; }
+      .dept-grid { grid-template-columns: 1fr; }
+      .about-grid { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .why-grid { grid-template-columns: 1fr 1fr; }
+      .contact-grid { grid-template-columns: 1fr; }
+      .lending-grid { grid-template-columns: 1fr; }
+      .footer-top { grid-template-columns: 1fr 1fr; gap: 32px; }
+    }
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+      .nav-hamburger { display: flex; }
+      .hero-inner, .services-section, .dept-section, .about-section, .contact-section, .lending-section { padding: 60px 20px; }
+      .clinical-video-section { padding: 0 20px 70px; }
+      .video-card { grid-template-columns: 1fr; padding: 24px; }
+      .services-grid { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .why-grid { grid-template-columns: 1fr; }
+      .lend-actions { grid-template-columns: 1fr; }
+      .footer-top { grid-template-columns: 1fr; gap: 28px; }
+      .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+      .hero-stats { flex-wrap: wrap; gap: 20px; }
+      .form-row { grid-template-columns: 1fr; }
+      .about-float-card { display: none; }
+      .auth-form-row { grid-template-columns: 1fr; }
+      .auth-modal-header, .auth-modal-body { padding-left: 24px; padding-right: 24px; }
+    }
+
+    .mobile-nav { display: none; position: fixed; top: var(--nav-h); left: 0; right: 0; background: rgba(10,22,40,.98); backdrop-filter: blur(18px); padding: 20px; z-index: 8999; flex-direction: column; gap: 4px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .mobile-nav.open { display: flex; }
+    .mobile-nav a { display: flex; align-items: center; gap: 12px; padding: 14px 16px; color: rgba(255,255,255,.75); text-decoration: none; font-size: 15px; font-weight: 500; border-radius: var(--radius-sm); transition: all .2s; cursor: pointer; }
+    .mobile-nav a:hover { background: rgba(255,255,255,.07); color: white; }
+    .mobile-nav a.active { color: var(--sky); }
+    .mobile-nav .auth-row { display: flex; gap: 10px; margin-top: 4px; }
+    .mobile-nav .auth-row button { flex: 1; padding: 12px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; font-family: var(--font-body); cursor: pointer; }
+    .mobile-nav .auth-row .m-login { background: transparent; color: rgba(255,255,255,.8); border: 1.5px solid rgba(255,255,255,.2); }
+    .mobile-nav .auth-row .m-register { background: rgba(14,165,233,.18); color: var(--sky-light); border: 1.5px solid rgba(14,165,233,.4); }
+    .mobile-nav .connect-mobile { display: flex; align-items: center; gap: 8px; padding: 14px 16px; background: linear-gradient(135deg, var(--sky), var(--blue)); color: white; border-radius: var(--radius-sm); font-weight: 600; border: none; font-size: 15px; cursor: pointer; margin-top: 8px; }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       NAVIGATION
+  ════════════════════════════════════════════════════════════ -->
+  <nav id="mainNav">
+    <a class="nav-logo" href="#" onclick="navigate('home')">
+      <div class="nav-logo-icon"><i class="fas fa-heartbeat"></i></div>
+      <div class="nav-logo-text">
+        <div class="name">Coxygen Medical Center</div>
+        <div class="tagline">Advanced Healthcare on Cardano</div>
+      </div>
+    </a>
+
+    <ul class="nav-links">
+      <li><a onclick="navigate('home')"        data-page="home"        class="active"><i class="fas fa-home"></i> Home</a></li>
+      <li><a onclick="navigate('about')"       data-page="about"              ><i class="fas fa-hospital"></i> About</a></li>
+      <li><a onclick="navigate('departments')" data-page="departments"        ><i class="fas fa-stethoscope"></i> Departments</a></li>
+      <li><a onclick="navigate('lending')"     data-page="lending"            ><i class="fas fa-hand-holding-usd"></i> Medical Lending</a></li>
+      <li><a onclick="navigate('contact')"     data-page="contact"            ><i class="fas fa-envelope"></i> Contact</a></li>
+      <li><a href="documentation.html"><i class="fas fa-book-open"></i> Documentation</a></li>
+      <li style="display:flex;align-items:center;gap:8px;">
+        <div class="notif-bell-wrap">
+          <div class="notif-bell" id="notifBell" onclick="toggleNotifPanel()" title="Notifications">
+            <i class="fas fa-bell"></i>
+          </div>
+          <div class="notif-badge" id="notifBadge">0</div>
+        </div>
+        <span class="wallet-pill" id="walletPill">Connected</span>
+        <button class="btn-connect-nav" id="connect" onclick="connectWallet()">
+          <i class="fas fa-plug"></i> Connect Wallet
+        </button>
+      </li>
+      <li>
+  <a href="logout.php" style="color:#fff;opacity:.85;">
+    <i class="fas fa-sign-out-alt"></i> Logout
+  </a>
+</li>
+    </ul>
+
+    <div class="nav-hamburger" id="hamburger" onclick="toggleMobileNav()">
+      <span></span><span></span><span></span>
+    </div>
+  </nav>
+
+  <!-- Mobile Nav -->
+  <div class="mobile-nav" id="mobileNav">
+    <a onclick="navigate('home');toggleMobileNav()"        data-page="home"><i class="fas fa-home"></i> Home</a>
+    <a onclick="navigate('about');toggleMobileNav()"       data-page="about"><i class="fas fa-hospital"></i> About</a>
+    <a onclick="navigate('departments');toggleMobileNav()" data-page="departments"><i class="fas fa-stethoscope"></i> Departments</a>
+    <a onclick="navigate('lending');toggleMobileNav()"     data-page="lending"><i class="fas fa-hand-holding-usd"></i> Medical Lending</a>
+    <a onclick="navigate('contact');toggleMobileNav()"     data-page="contact"><i class="fas fa-envelope"></i> Contact</a>
+    <a href="documentation.html"><i class="fas fa-book-open"></i> Documentation</a>
+    <div class="auth-row">
+      <button class="m-login"    onclick="openAuthModal('login');toggleMobileNav()"><i class="fas fa-sign-in-alt"></i> Login</button>
+      <button class="m-register" onclick="openAuthModal('register');toggleMobileNav()"><i class="fas fa-user-plus"></i> Register</button>
+    </div>
+    <button class="connect-mobile" id="connectMobile" onclick="connectWallet();toggleMobileNav()">
+      <i class="fas fa-plug"></i> Connect Wallet
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       AUTH MODALS  (Login & Register)
+  ════════════════════════════════════════════════════════════ -->
+
+  <!-- LOGIN MODAL -->
+  <div class="auth-modal-overlay" id="loginModal">
+    <div class="auth-modal-box">
+      <div class="auth-modal-header">
+        <div class="close-x" onclick="closeAuthModal('login')"><i class="fas fa-times"></i></div>
+        <div class="auth-modal-logo"><i class="fas fa-heartbeat"></i></div>
+        <h2>Welcome Back</h2>
+        <p>Sign in to your Coxygen patient account</p>
+      </div>
+      <div class="auth-modal-body">
+        <div class="auth-field">
+          <label>Email Address</label>
+          <input class="auth-input" type="email" id="loginEmail" placeholder="you@example.com" />
+        </div>
+        <div class="auth-field">
+          <label>
+            Password
+            <span class="forgot-link" onclick="handleForgot()">Forgot password?</span>
+          </label>
+          <div class="auth-input-wrap">
+            <input class="auth-input" type="password" id="loginPassword" placeholder="Enter your password" style="padding-right:44px;" />
+            <button class="eye-toggle" onclick="togglePwd('loginPassword',this)" tabindex="-1">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <button class="auth-btn-primary" onclick="handleLogin()">
+          <i class="fas fa-sign-in-alt"></i> Sign In
+        </button>
+        <div class="auth-divider"><span>or continue with</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <button onclick="showToast('info','Google','OAuth integration coming soon.')" style="padding:11px;background:var(--off-white);border:1.5px solid #dde5f0;border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font-body);transition:all .2s;" onmouseover="this.style.borderColor='var(--sky)'" onmouseout="this.style.borderColor='#dde5f0'">
+            <i class="fab fa-google" style="color:#ea4335;"></i> Google
+          </button>
+          <button onclick="openAuthModal('register')" style="padding:11px;background:var(--off-white);border:1.5px solid #dde5f0;border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font-body);transition:all .2s;" onmouseover="this.style.borderColor='var(--sky)'" onmouseout="this.style.borderColor='#dde5f0'">
+            <i class="fas fa-user-plus" style="color:var(--blue);"></i> Register
+          </button>
+        </div>
+        <div class="auth-switch">
+          Don't have an account? <a onclick="openAuthModal('register')">Create one free →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTER MODAL -->
+  <div class="auth-modal-overlay" id="registerModal">
+    <div class="auth-modal-box">
+      <div class="auth-modal-header">
+        <div class="close-x" onclick="closeAuthModal('register')"><i class="fas fa-times"></i></div>
+        <div class="auth-modal-logo"><i class="fas fa-user-plus"></i></div>
+        <h2>Create Account</h2>
+        <p>Join Coxygen Medical Center today</p>
+      </div>
+      <div class="auth-modal-body">
+        <div class="auth-form-row">
+          <div class="auth-field">
+            <label>First Name</label>
+            <input class="auth-input" type="text" id="regFirst" placeholder="John" />
+          </div>
+          <div class="auth-field">
+            <label>Last Name</label>
+            <input class="auth-input" type="text" id="regLast" placeholder="Doe" />
+          </div>
+        </div>
+        <div class="auth-field">
+          <label>Email Address</label>
+          <input class="auth-input" type="email" id="regEmail" placeholder="you@example.com" />
+        </div>
+        <div class="auth-field">
+          <label>Phone Number</label>
+          <input class="auth-input" type="tel" id="regPhone" placeholder="+234 800 000 0000" />
+        </div>
+        <div class="auth-field">
+          <label>Password</label>
+          <div class="auth-input-wrap">
+            <input class="auth-input" type="password" id="regPassword" placeholder="Min. 8 characters" style="padding-right:44px;" />
+            <button class="eye-toggle" onclick="togglePwd('regPassword',this)" tabindex="-1">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="auth-check-row">
+          <input type="checkbox" id="agreeTerms" />
+          <label for="agreeTerms">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></label>
+        </div>
+        <button class="auth-btn-primary" onclick="handleRegister()">
+          <i class="fas fa-user-check"></i> Create My Account
+        </button>
+        <div class="auth-switch">
+          Already have an account? <a onclick="openAuthModal('login')">Sign in →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE WRAP
+  ════════════════════════════════════════════════════════════ -->
+  <div class="page-wrap">
+
+    <!-- HOME -->
+    <div id="page-home" class="section active">
+      <section class="hero">
+        <div class="hero-deco hero-deco-1"></div>
+        <div class="hero-deco hero-deco-2"></div>
+        <div class="hero-inner">
+          <div class="hero-content">
+            <div class="hero-badge"><i class="fas fa-shield-alt"></i> Trusted Healthcare Since 2009</div>
+            <h1>Advanced Medical Care <span class="highlight">Powered by Blockchain</span></h1>
+            <p>Coxygen Medical Center combines world-class clinical expertise with Cardano blockchain technology to make healthcare financing transparent, secure, and accessible to all.</p>
+            <div class="hero-actions">
+              <button class="btn btn-primary"  onclick="navigate('departments')"><i class="fas fa-stethoscope"></i> Our Departments</button>
+              <button class="btn btn-outline"  onclick="navigate('lending')"><i class="fas fa-hand-holding-usd"></i> Medical Lending</button>
+            </div>
+            <div class="hero-stats">
+              <div class="hero-stat"><div class="num" data-count="50K+" data-dur="1600" data-type="roller">50K+</div><div class="label">Patients Served</div></div>
+              <div class="hero-stat"><div class="num" data-count="120+" data-dur="1400" data-type="roller">120+</div><div class="label">Specialists</div></div>
+              <div class="hero-stat"><div class="num" data-count="7"   data-dur="1000" data-type="roller">7</div><div class="label">Departments</div></div>
+              <div class="hero-stat"><div class="num" data-count="24/7" data-dur="1200" data-type="roller">24/7</div><div class="label">Emergency Care</div></div>
+            </div>
+          </div>
+          <div class="hero-visual">
+            <div class="hero-img-card">
+              <div class="hero-img-placeholder"><i class="fas fa-hospital"></i><p>Hospital Image</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="hero-float-badge">
+          <div class="badge-icon"><i class="fas fa-award"></i></div>
+          <div class="badge-text">
+            <div class="t1"><span data-count="15+" data-dur="1800" data-type="roller">15+</span></div>
+            <div class="t2">Awards Won</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="trust-bar">
+        <div class="trust-item"><i class="fas fa-check-circle"></i><span>JCI Accredited</span></div>
+        <div class="trust-divider"></div>
+        <div class="trust-item"><i class="fas fa-shield-alt"></i><span>ISO 9001:2015 Certified</span></div>
+        <div class="trust-divider"></div>
+        <div class="trust-item"><i class="fas fa-link"></i><span>Cardano Blockchain Secured</span></div>
+        <div class="trust-divider"></div>
+        <div class="trust-item"><i class="fas fa-ambulance"></i><span>24/7 Emergency Response</span></div>
+        <div class="trust-divider"></div>
+        <div class="trust-item"><i class="fas fa-microscope"></i><span>Advanced Diagnostics Lab</span></div>
+      </div>
+
+      <section class="services-section">
+        <div class="section-header">
+          <div class="section-label">What We Offer</div>
+          <h2>Comprehensive Medical Services</h2>
+          <p>From routine check-ups to complex surgeries, our multidisciplinary team delivers compassionate, evidence-based care at every level.</p>
+        </div>
+        <div class="services-grid">
+          <div class="service-card" onclick="navigate('departments')">
+            <div class="service-icon">❤️</div><h3>Cardiology</h3>
+            <p>Advanced cardiac diagnostics, interventional procedures, and long-term cardiovascular management by expert cardiologists.</p>
+            <a class="service-link">Learn more <i class="fas fa-arrow-right"></i></a>
+          </div>
+          <div class="service-card" onclick="navigate('departments')">
+            <div class="service-icon">🧠</div><h3>Neurology</h3>
+            <p>Comprehensive brain and spine care — from stroke management to epilepsy, Parkinson's, and complex neurosurgical interventions.</p>
+            <a class="service-link">Learn more <i class="fas fa-arrow-right"></i></a>
+          </div>
+          <div class="service-card" onclick="navigate('departments')">
+            <div class="service-icon">🩺</div><h3>Emergency Medicine</h3>
+            <p>Round-the-clock emergency care with rapid-response teams, trauma bays, and state-of-the-art life-support systems.</p>
+            <a class="service-link">Learn more <i class="fas fa-arrow-right"></i></a>
+          </div>
+          <div class="service-card" onclick="navigate('departments')">
+            <div class="service-icon">👶</div><h3>Pediatrics</h3>
+            <p>Dedicated child health services from newborn nursery care through adolescent medicine in a family-centred environment.</p>
+            <a class="service-link">Learn more <i class="fas fa-arrow-right"></i></a>
+          </div>
+          <div class="service-card" onclick="navigate('departments')">
+            <div class="service-icon">🦴</div><h3>Orthopedics</h3>
+            <p>Expert care for musculoskeletal conditions, joint replacements, sports injuries, and spinal disorders.</p>
+            <a class="service-link">Learn more <i class="fas fa-arrow-right"></i></a>
+          </div>
+          <div class="service-card" onclick="navigate('lending')">
+            <div class="service-icon">₿</div><h3>Medical Lending</h3>
+            <p>Cardano-powered healthcare financing — secure collateral-backed credit lines for immediate medical treatment.</p>
+            <a class="service-link">Access portal <i class="fas fa-arrow-right"></i></a>
+          </div>
+        </div>
+        <div style="margin-top:48px;">
+          <div class="section-label" style="margin-bottom:20px;">Also Available</div>
+          <div class="qs-row">
+            <div class="qs-tag"><i class="fas fa-x-ray"></i> Radiology & Imaging</div>
+            <div class="qs-tag"><i class="fas fa-vials"></i> Pathology Lab</div>
+            <div class="qs-tag"><i class="fas fa-baby"></i> Obstetrics & Gynecology</div>
+            <div class="qs-tag"><i class="fas fa-ribbon"></i> Oncology</div>
+            <div class="qs-tag"><i class="fas fa-eye"></i> Ophthalmology</div>
+            <div class="qs-tag"><i class="fas fa-tooth"></i> Dental</div>
+            <div class="qs-tag"><i class="fas fa-brain"></i> Psychiatry</div>
+            <div class="qs-tag"><i class="fas fa-running"></i> Physiotherapy</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="clinical-video-section">
+        <div class="video-card">
+          <div class="video-copy">
+            <div class="section-label" style="justify-content:flex-start;margin-bottom:12px;">Patient Experience</div>
+            <h3>Take a Guided Tour of Our Digital-First Care Journey</h3>
+            <p>Explore how Coxygen Medical Center combines compassionate bedside care with secure, blockchain-enabled medical financing. This short video introduces patients and partners to our care standards, infrastructure, and outcomes.</p>
+            <ul>
+              <li><i class="fas fa-circle-check"></i> Smart admission and verification workflow</li>
+              <li><i class="fas fa-circle-check"></i> Specialist-led treatment pathways and diagnostics</li>
+              <li><i class="fas fa-circle-check"></i> Transparent lending and billing visibility on Cardano</li>
+            </ul>
+            <a class="btn-docs" href="documentation.html"><i class="fas fa-book-medical"></i> Read Complete Documentation</a>
+          </div>
+          <div class="video-embed-wrap">
+            <iframe src="https://www.youtube.com/embed/5MgBikgcWnY" title="Coxygen Medical Center Introduction" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ABOUT -->
+    <div id="page-about" class="section">
+      <div class="page-hero">
+        <div class="section-label" style="color:var(--sky-light);margin-bottom:12px;">Who We Are</div>
+        <h1>About Coxygen Medical Center</h1>
+        <p>A pioneer in combining modern healthcare with blockchain-powered transparency and patient financing.</p>
+      </div>
+      <div class="breadcrumb-bar">
+        <a onclick="navigate('home')" style="color:var(--blue);cursor:pointer;">Home</a>
+        <i class="fas fa-chevron-right"></i><span class="current">About Us</span>
+      </div>
+      <div class="about-section">
+        <div class="about-grid">
+          <div class="about-img-wrap">
+            <div class="about-img-placeholder" style="border-radius:var(--radius-xl);"><i class="fas fa-user-md" style="font-size:64px;color:var(--blue);opacity:.35;"></i><p style="font-size:14px;color:var(--slate);">Doctors Image</p></div>
+            <div class="about-float-card"><div class="num" style="font-family:var(--font-display);font-size:36px;font-weight:800;color:var(--sky);" data-count="50000" data-dur="2200" data-type="counter">50K+</div><div class="lbl">Patients treated</div></div>
+          </div>
+          <div class="about-content">
+            <div class="section-label" style="justify-content:flex-start;">Our Story</div>
+            <h2>Healthcare Built on Trust & Technology</h2>
+            <p>Founded in 2018, Coxygen Medical Center began with a singular vision: healthcare that heals not just the body, but the financial anxiety that often accompanies illness.</p>
+            <p>In 2023, we became one of Africa's first hospitals to integrate Cardano blockchain technology into our patient financing ecosystem — creating a transparent, secure, and decentralised medical credit platform called <strong>Coxygen Medical Lending</strong>.</p>
+            <p>Our team of over 120 specialist clinicians, nurses, and healthcare technologists are united by a commitment to evidence-based medicine and patient dignity.</p>
+            <div class="about-values">
+              <div class="value-box"><div class="value-icon">🎯</div><h4>Our Mission</h4><p>To deliver world-class, compassionate healthcare while eliminating financial barriers through innovative blockchain financing.</p></div>
+              <div class="value-box"><div class="value-icon">🔭</div><h4>Our Vision</h4><p>To be Africa's leading technology-integrated medical centre, setting the global standard for transparent patient financing.</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-box"><div class="icon"><i class="fas fa-user-injured"></i></div><div class="num" data-count="50000" data-dur="2000" data-type="counter">50,000</div><div class="lbl">Patients Served</div></div>
+          <div class="stat-box"><div class="icon"><i class="fas fa-user-md"></i></div><div class="num" data-count="120" data-dur="1600" data-type="counter">120</div><div class="lbl">Specialist Doctors</div></div>
+          <div class="stat-box"><div class="icon"><i class="fas fa-calendar-alt"></i></div><div class="num" data-count="6" data-dur="1200" data-type="counter">6</div><div class="lbl">Years of Excellence</div></div>
+          <div class="stat-box"><div class="icon"><i class="fas fa-link"></i></div><div class="num" style="font-size:36px;">₳2M+</div><div class="lbl">Medical Credit Issued</div></div>
+        </div>
+        <div class="section-header" style="margin-bottom:40px;">
+          <div class="section-label">Our Values</div>
+          <h2>The Pillars of Coxygen Care</h2>
+          <p>Everything we do is guided by four uncompromising core values that place patients at the centre of everything.</p>
+        </div>
+        <div class="why-grid" style="margin-bottom:80px;">
+          <div class="why-card"><i class="fas fa-heart"></i><h4>Compassion First</h4><p>We treat every patient as a member of our family — with empathy, respect, and unwavering dignity throughout every care interaction.</p></div>
+          <div class="why-card"><i class="fas fa-microscope"></i><h4>Clinical Excellence</h4><p>Our specialists follow the latest evidence-based protocols and invest in continuous professional development and cutting-edge technology.</p></div>
+          <div class="why-card"><i class="fas fa-link"></i><h4>Blockchain Transparency</h4><p>We use Cardano smart contracts to ensure every medical lending transaction is auditable, immutable, and free from hidden charges.</p></div>
+          <div class="why-card"><i class="fas fa-universal-access"></i><h4>Accessibility</h4><p>Through our Medical Lending Portal, we remove financial barriers — enabling immediate treatment even before payment is arranged.</p></div>
+          <div class="why-card"><i class="fas fa-shield-alt"></i><h4>Patient Safety</h4><p>Rigorous infection control, medication safety protocols, and incident reporting systems protect every patient in our care.</p></div>
+          <div class="why-card"><i class="fas fa-leaf"></i><h4>Sustainability</h4><p>We operate on green energy principles and leverage Cardano's Proof-of-Stake consensus — one of the most energy-efficient blockchains available.</p></div>
+        </div>
+        <div class="section-header"><div class="section-label">Why Coxygen</div><h2>What Sets Us Apart</h2></div>
+        <div class="why-grid">
+          <div class="why-card"><i class="fas fa-ambulance"></i><h4>24/7 Emergency Care</h4><p>Round-the-clock emergency medicine with a dedicated trauma bay and fast-response critical care teams.</p></div>
+          <div class="why-card"><i class="fas fa-award"></i><h4>JCI Accredited</h4><p>Our hospital meets the international gold standard in patient safety and quality care set by Joint Commission International.</p></div>
+          <div class="why-card"><i class="fas fa-hand-holding-usd"></i><h4>Blockchain Medical Credit</h4><p>One of the very first hospitals to offer decentralised medical lending via Cardano smart contracts — zero hidden fees, full on-chain transparency.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEPARTMENTS -->
+    <div id="page-departments" class="section">
+      <div class="page-hero">
+        <div class="section-label" style="color:var(--sky-light);margin-bottom:12px;">Clinical Divisions</div>
+        <h1>Our Medical Departments</h1>
+        <p>Seven specialised divisions staffed by world-class clinicians and equipped with the latest medical technology.</p>
+      </div>
+      <div class="breadcrumb-bar">
+        <a onclick="navigate('home')" style="color:var(--blue);cursor:pointer;">Home</a>
+        <i class="fas fa-chevron-right"></i><span class="current">Departments</span>
+      </div>
+      <div class="dept-section">
+        <div class="dept-grid">
+          <div class="dept-card">
+            <div class="dept-img-placeholder"><i class="fas fa-heartbeat"></i><span>Cardiology Dept.</span></div>
+            <div class="dept-body">
+              <div class="dept-badge">Department</div><h3>❤️ Cardiology</h3>
+              <p>Our Department of Cardiology provides comprehensive evaluation and management of all heart and vascular conditions. From non-invasive diagnostics to complex interventional procedures, our cardiac team delivers life-saving care with exceptional outcomes.</p>
+              <p>We operate a state-of-the-art Cath Lab with 24/7 Primary PCI capability for acute myocardial infarction — the gold standard for heart attack treatment.</p>
+              <div class="dept-services"><span class="dept-tag">ECG & Echocardiography</span><span class="dept-tag">Angioplasty & Stenting</span><span class="dept-tag">Heart Failure Clinic</span><span class="dept-tag">Pacemaker Implantation</span><span class="dept-tag">Cardiac Rehabilitation</span></div>
+              <div class="dept-avail">Available Monday – Saturday, 7 AM – 9 PM | Emergency: 24/7</div>
+            </div>
+          </div>
+          <div class="dept-card">
+            <div class="dept-img-placeholder"><i class="fas fa-brain"></i><span>Neurology Dept.</span></div>
+            <div class="dept-body">
+              <div class="dept-badge">Department</div><h3>🧠 Neurology</h3>
+              <p>Our Neurology and Neurosurgery division offers cutting-edge diagnosis and treatment of disorders affecting the brain, spine, and peripheral nervous system. We house a dedicated Stroke Unit with thrombolysis capability for time-critical interventions.</p>
+              <p>Advanced neuroimaging (3T MRI, CT Perfusion) and intraoperative neuromonitoring ensure the highest safety standards in complex brain surgery.</p>
+              <div class="dept-services"><span class="dept-tag">Stroke Management</span><span class="dept-tag">Epilepsy & EEG</span><span class="dept-tag">Parkinson's Clinic</span><span class="dept-tag">Neurosurgery</span><span class="dept-tag">Memory Disorders</span></div>
+              <div class="dept-avail">Available Monday – Friday, 8 AM – 6 PM | Stroke: 24/7</div>
+            </div>
+          </div>
+          <div class="dept-card">
+            <div class="dept-img-placeholder"><i class="fas fa-baby"></i><span>Pediatrics Dept.</span></div>
+            <div class="dept-body">
+              <div class="dept-badge">Department</div><h3>👶 Pediatrics</h3>
+              <p>Our Children's Health Centre provides holistic, family-centred care from the neonatal period through adolescence. Our NICU supports premature and critically ill newborns with round-the-clock specialist neonatology.</p>
+              <p>Our child-friendly wards are designed to reduce anxiety and promote healing in a comforting environment that supports both children and their families.</p>
+              <div class="dept-services"><span class="dept-tag">Neonatology & NICU</span><span class="dept-tag">Paediatric Surgery</span><span class="dept-tag">Vaccination Clinic</span><span class="dept-tag">Child Development</span><span class="dept-tag">Adolescent Medicine</span></div>
+              <div class="dept-avail">Available Daily, 8 AM – 8 PM | Paediatric Emergency: 24/7</div>
+            </div>
+          </div>
+          <div class="dept-card">
+            <div class="dept-img-placeholder"><i class="fas fa-bone"></i><span>Orthopedics Dept.</span></div>
+            <div class="dept-body">
+              <div class="dept-badge">Department</div><h3>🦴 Orthopedics</h3>
+              <p>Our Orthopedics and Sports Medicine Department specialises in the surgical and non-surgical treatment of musculoskeletal conditions. We perform high-volume joint replacement surgeries with outstanding functional outcomes.</p>
+              <p>Our arthroscopic surgery suite enables minimally invasive procedures that reduce recovery times and post-operative pain significantly.</p>
+              <div class="dept-services"><span class="dept-tag">Hip & Knee Replacement</span><span class="dept-tag">Spine Surgery</span><span class="dept-tag">Sports Injuries</span><span class="dept-tag">Fracture Care</span><span class="dept-tag">Arthroscopy</span></div>
+              <div class="dept-avail">Available Monday – Saturday, 8 AM – 6 PM | Trauma: 24/7</div>
+            </div>
+          </div>
+          <div class="dept-card">
+            <div class="dept-img-placeholder"><i class="fas fa-ambulance"></i><span>Emergency Dept.</span></div>
+            <div class="dept-body">
+              <div class="dept-badge">Department</div><h3>🚨 Emergency Medicine</h3>
+              <p>Coxygen Emergency Department operates 24 hours a day, 365 days a year, with trauma-certified emergency physicians and nurses equipped to handle any life-threatening condition. We implement a 5-level triage system for rapid prioritisation.</p>
+              <div class="dept-services"><span class="dept-tag">Trauma & Resuscitation</span><span class="dept-tag">Toxicology</span><span class="dept-tag">Acute Coronary Care</span><span class="dept-tag">Stroke Response</span><span class="dept-tag">Paediatric Emergency</span></div>
+              <div class="dept-avail" style="color:var(--danger);">Open 24 Hours | 7 Days a Week | No Appointment Needed</div>
+            </div>
+          </div>
+          <div class="dept-card">
+            <div class="dept-img-placeholder"><i class="fas fa-female"></i><span>OB-GYN Dept.</span></div>
+            <div class="dept-body">
+              <div class="dept-badge">Department</div><h3>🤰 Obstetrics & Gynecology</h3>
+              <p>Our Women's Health Centre provides expert care across every stage of a woman's life — from adolescent gynaecology to menopause management, and from preconception counselling to high-risk obstetrics and safe childbirth.</p>
+              <div class="dept-services"><span class="dept-tag">Antenatal & Postnatal Care</span><span class="dept-tag">High-Risk Obstetrics</span><span class="dept-tag">Laparoscopic Gynaecology</span><span class="dept-tag">Fertility Clinic</span><span class="dept-tag">Cervical Screening</span></div>
+              <div class="dept-avail">Available Monday – Saturday, 8 AM – 8 PM | Labour: 24/7</div>
+            </div>
+          </div>
+          <div class="dept-card">
+            <div class="dept-img-placeholder"><i class="fas fa-ribbon"></i><span>Oncology Dept.</span></div>
+            <div class="dept-body">
+              <div class="dept-badge">Department</div><h3>🎗️ Oncology</h3>
+              <p>Our Cancer Centre combines medical, surgical, and radiation oncology under one roof, creating a true multidisciplinary tumour board that personalises treatment for each patient.</p>
+              <div class="dept-services"><span class="dept-tag">Chemotherapy Unit</span><span class="dept-tag">Radiation Oncology</span><span class="dept-tag">Surgical Oncology</span><span class="dept-tag">Cancer Screening</span><span class="dept-tag">Palliative Care</span></div>
+              <div class="dept-avail">Available Monday – Friday, 8 AM – 5 PM | Consult Available Weekends</div>
+            </div>
+          </div>
+          <div class="dept-card" style="background:linear-gradient(145deg,var(--navy),var(--navy-mid));display:flex;align-items:center;justify-content:center;text-align:center;padding:48px;min-height:300px;">
+            <div>
+              <div style="font-size:52px;margin-bottom:16px;">💳</div>
+              <h3 style="font-family:var(--font-display);font-size:24px;color:white;margin-bottom:12px;">Need Help Paying Your Medical Bills?</h3>
+              <p style="color:rgba(255,255,255,.65);font-size:14px;margin-bottom:24px;line-height:1.65;">Our blockchain-powered Medical Lending Portal gives you instant access to credit — secured by collateral on the Cardano network, with full transparency and no hidden charges.</p>
+              <button class="btn btn-primary" onclick="navigate('lending')"><i class="fas fa-hand-holding-usd"></i> Access Medical Credit</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LENDING -->
+    <div id="page-lending" class="section">
+      <div class="page-hero">
+        <div class="section-label" style="color:var(--sky-light);margin-bottom:12px;">Blockchain Finance</div>
+        <h1>Medical Lending Portal</h1>
+        <p>Secure, transparent healthcare credit on Cardano — pay your medical bills today, repay at your convenience.</p>
+      </div>
+      <div class="breadcrumb-bar">
+        <a onclick="navigate('home')" style="color:var(--blue);cursor:pointer;">Home</a>
+        <i class="fas fa-chevron-right"></i><span class="current">Medical Lending</span>
+      </div>
+      <div class="lending-section">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:48px;">
+          <div style="background:var(--off-white);border-radius:var(--radius-md);padding:24px;text-align:center;"><div style="font-size:32px;margin-bottom:10px;">🔐</div><h4 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:6px;">1. Deposit Collateral</h4><p style="font-size:13px;color:var(--slate);line-height:1.6;">Lock ADA as your credit limit in a Plutus smart contract.</p></div>
+          <div style="background:var(--off-white);border-radius:var(--radius-md);padding:24px;text-align:center;"><div style="font-size:32px;margin-bottom:10px;">🏥</div><h4 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:6px;">2. Open Medical Credit</h4><p style="font-size:13px;color:var(--slate);line-height:1.6;">Your medical provider receives instant on-chain payment.</p></div>
+          <div style="background:var(--off-white);border-radius:var(--radius-md);padding:24px;text-align:center;"><div style="font-size:32px;margin-bottom:10px;">✅</div><h4 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:6px;">3. Repay & Unlock</h4><p style="font-size:13px;color:var(--slate);line-height:1.6;">Repay the bill + interest to recover your full collateral.</p></div>
+        </div>
+        <div class="lending-grid">
+          <div>
+            <div class="lending-card" style="margin-bottom:24px;">
+              <div class="lend-section-title"><i class="fas fa-wallet"></i> Wallet Connection</div>
+              <div class="wallet-info-box">
+                <p><strong>Network:</strong> <span id="network">Not connected</span></p>
+                <p><strong>Patient Address:</strong> <span id="walletAddress">Connect your wallet to begin</span></p>
+                <p><strong>Smart Contract:</strong> <span id="scriptAddress" style="font-size:11px;font-family:var(--font-mono);">addr_test1qplutus…</span></p>
+                <div class="wallet-balance-row">
+                  <span class="bal-label">Wallet Balance</span>
+                  <span class="bal-value" id="walletBalance">—</span>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <button class="btn btn-primary" id="connectBtn" onclick="connectWallet()"><i class="fas fa-plug"></i> Connect Wallet</button>
+                <button class="btn" id="disconnectBtn" style="background:rgba(255,255,255,.1);color:white;display:none;" onclick="disconnectWallet()"><i class="fas fa-power-off"></i> Disconnect</button>
+              </div>
+            </div>
+            <div class="lending-card">
+              <div class="lend-section-title"><i class="fas fa-file-contract"></i> Smart Contract Details</div>
+              <div class="contract-info">
+                <div class="contract-item"><i class="fas fa-check-circle"></i> Plutus V2 validated script</div>
+                <div class="contract-item"><i class="fas fa-check-circle"></i> Non-custodial — you control your keys</div>
+                <div class="contract-item"><i class="fas fa-check-circle"></i> Collateral-backed credit model</div>
+                <div class="contract-item"><i class="fas fa-check-circle"></i> Fixed-rate interest, fully on-chain</div>
+                <div class="contract-item"><i class="fas fa-check-circle"></i> Auditable & transparent transactions</div>
+              </div>
+              <div style="background:rgba(14,165,233,.06);border-radius:var(--radius-md);padding:16px;">
+                <div style="font-size:12px;color:rgba(255,255,255,.45);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px;font-weight:600;">Protocol Flow</div>
+                <div style="font-family:var(--font-mono);font-size:12px;color:rgba(255,255,255,.65);line-height:1.8;">Patient → Deposit Collateral<br>Smart Contract → Lock ADA<br>Provider ← Receive Bill Payment<br>Patient → Repay (Bill + Interest)<br>Patient ← Collateral Returned</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="lending-card-white">
+              <div class="lend-section-title-dark"><i class="fas fa-heartbeat"></i> Lending Operations</div>
+              <div class="form-group" style="margin-bottom:18px;">
+                <label style="font-size:13px;font-weight:600;color:var(--navy);display:block;margin-bottom:8px;">Collateral Amount (ADA)</label>
+                <div class="lend-input-wrap-light"><input type="number" id="collateral" min="10" step="1" value="1000" /><span class="unit">ADA</span></div>
+                <p style="font-size:12px;color:var(--slate);margin-top:5px;">This serves as your credit limit and is locked in the smart contract.</p>
+              </div>
+              <div class="form-group" style="margin-bottom:18px;">
+                <label style="font-size:13px;font-weight:600;color:var(--navy);display:block;margin-bottom:8px;">Medical Bill Amount (ADA)</label>
+                <div class="lend-input-wrap-light"><input type="number" id="billAmount" min="10" step="1" value="500" /><span class="unit">ADA</span></div>
+              </div>
+              <div class="form-group" style="margin-bottom:18px;">
+                <label style="font-size:13px;font-weight:600;color:var(--navy);display:block;margin-bottom:8px;">Interest Amount (ADA)</label>
+                <div class="lend-input-wrap-light"><input type="number" id="interest" min="1" step="0.5" value="25" /><span class="unit">ADA</span></div>
+              </div>
+              <div class="form-group" style="margin-bottom:18px;">
+                <label style="font-size:13px;font-weight:600;color:var(--navy);display:block;margin-bottom:8px;">Medical Provider Wallet Address</label>
+                <div class="lend-input-wrap-light"><input type="text" id="lender" placeholder="addr_test1… or pubkey hash" /><span class="unit"><i class="fas fa-hospital-user"></i></span></div>
+              </div>
+              <div style="background:var(--off-white);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e8eff7;"><span style="font-size:13px;color:var(--slate);">Total Repayable</span><span style="font-size:14px;font-weight:700;color:var(--navy);" id="totalRepay">525 ADA</span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e8eff7;"><span style="font-size:13px;color:var(--slate);">Collateral Returned On Repay</span><span style="font-size:14px;font-weight:700;color:var(--success);" id="collateralReturn">1000 ADA</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="font-size:13px;color:var(--slate);">Effective Interest Rate</span><span style="font-size:14px;font-weight:700;color:var(--warning);" id="effectiveRate">5%</span></div>
+              </div>
+              <div class="lend-actions">
+                <button id="openCreditBtn"  class="btn btn-success" onclick="openCredit()"><i class="fas fa-credit-card"></i> Open Credit</button>
+                <button id="repayCreditBtn" class="btn btn-warning" onclick="repayCredit()"><i class="fas fa-coins"></i> Repay Credit</button>
+              </div>
+              <div class="warning-box"><i class="fas fa-info-circle"></i><p style="color:var(--slate);"><strong>Smart Contract Terms:</strong> Collateral is your credit limit. Patient signature required to open credit. Repayment returns full collateral minus the agreed interest to the patient wallet.</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="log-card">
+          <div class="lend-section-title"><i class="fas fa-history"></i> Transaction Log</div>
+          <div class="log-container" id="log">
+            <div class="log-entry"><span class="log-time">[System]</span><span class="log-msg">Medical Lending Protocol initialized. Connect wallet to begin.</span></div>
+            <div class="log-entry"><span class="log-time">[Info]</span><span class="log-msg">Coxygen Medical Lending App • Built with ❤️ on Cardano</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTACT -->
+    <div id="page-contact" class="section">
+      <div class="page-hero">
+        <div class="section-label" style="color:var(--sky-light);margin-bottom:12px;">Get In Touch</div>
+        <h1>Contact Coxygen Medical Center</h1>
+        <p>Our patient experience team is available to answer your questions, schedule appointments, or guide you through the Medical Lending process.</p>
+      </div>
+      <div class="breadcrumb-bar">
+        <a onclick="navigate('home')" style="color:var(--blue);cursor:pointer;">Home</a>
+        <i class="fas fa-chevron-right"></i><span class="current">Contact Us</span>
+      </div>
+      <div class="contact-section">
+        <div class="contact-grid">
+          <div>
+            <h3>We're Here For You</h3>
+            <p>Whether you need to book an appointment, enquire about our Medical Lending Portal, or speak with a specialist, our team is ready to help. Walk-ins are welcome at our Emergency Department around the clock.</p>
+            <div class="contact-item"><div class="contact-item-icon"><i class="fas fa-phone-alt"></i></div><div class="details"><div class="title">Main Reception</div><div class="val">+234 800 COXYGEN (1234)</div></div></div>
+            <div class="contact-item"><div class="contact-item-icon"><i class="fas fa-ambulance"></i></div><div class="details"><div class="title">Emergency Line</div><div class="val" style="color:var(--danger);">+234 800 SOS-911 (24/7)</div></div></div>
+            <div class="contact-item"><div class="contact-item-icon"><i class="fas fa-envelope"></i></div><div class="details"><div class="title">Email</div><div class="val">info@coxygenmedical.com</div></div></div>
+            <div class="contact-item"><div class="contact-item-icon"><i class="fas fa-map-marker-alt"></i></div><div class="details"><div class="title">Location</div><div class="val">14 Healthcare Boulevard, Victoria Island, Lagos, Nigeria</div></div></div>
+            <div class="contact-item"><div class="contact-item-icon"><i class="fas fa-clock"></i></div><div class="details"><div class="title">Outpatient Hours</div><div class="val">Mon–Sat: 7 AM – 9 PM | Emergency: 24/7</div></div></div>
+            <div class="map-placeholder"><i class="fas fa-map-marked-alt"></i><p>14 Healthcare Boulevard, Victoria Island, Lagos</p></div>
+          </div>
+          <div class="contact-form">
+            <h3>Send Us a Message</h3>
+            <div class="form-row">
+              <div class="form-group"><label>First Name</label><input type="text" class="form-input" placeholder="John" /></div>
+              <div class="form-group"><label>Last Name</label><input type="text" class="form-input" placeholder="Doe" /></div>
+            </div>
+            <div class="form-group"><label>Email Address</label><input type="text" class="form-input" placeholder="john@example.com" /></div>
+            <div class="form-group"><label>Phone Number</label><input type="text" class="form-input" placeholder="+234 800 000 0000" /></div>
+            <div class="form-group">
+              <label>Department / Enquiry Type</label>
+              <select class="form-input" style="cursor:pointer;">
+                <option>General Enquiry</option><option>Book an Appointment</option><option>Medical Lending Portal</option>
+                <option>Cardiology</option><option>Neurology</option><option>Pediatrics</option>
+                <option>Orthopedics</option><option>Emergency</option><option>Obstetrics & Gynecology</option><option>Oncology</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Message</label><textarea class="form-input" rows="5" placeholder="Describe your enquiry or appointment request…"></textarea></div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="submitContactForm()"><i class="fas fa-paper-plane"></i> Send Message</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end page-wrap -->
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="logo-name">Coxygen Medical Center</div>
+        <p>Advanced healthcare powered by Cardano blockchain. Compassionate clinical care combined with transparent patient financing for a healthier tomorrow.</p>
+        <div style="display:flex;gap:12px;margin-top:20px;">
+          <a href="#" style="width:36px;height:36px;background:rgba(255,255,255,.08);border-radius:8px;display:grid;place-items:center;color:rgba(255,255,255,.6);font-size:14px;text-decoration:none;transition:all .2s;" onmouseover="this.style.background='rgba(14,165,233,.3)'" onmouseout="this.style.background='rgba(255,255,255,.08)'"><i class="fab fa-twitter"></i></a>
+          <a href="#" style="width:36px;height:36px;background:rgba(255,255,255,.08);border-radius:8px;display:grid;place-items:center;color:rgba(255,255,255,.6);font-size:14px;text-decoration:none;transition:all .2s;" onmouseover="this.style.background='rgba(14,165,233,.3)'" onmouseout="this.style.background='rgba(255,255,255,.08)'"><i class="fab fa-linkedin"></i></a>
+          <a href="#" style="width:36px;height:36px;background:rgba(255,255,255,.08);border-radius:8px;display:grid;place-items:center;color:rgba(255,255,255,.6);font-size:14px;text-decoration:none;transition:all .2s;" onmouseover="this.style.background='rgba(14,165,233,.3)'" onmouseout="this.style.background='rgba(255,255,255,.08)'"><i class="fab fa-facebook"></i></a>
+        </div>
+      </div>
+      <div class="footer-col"><h4>Hospital</h4><ul><li><a onclick="navigate('home')">Home</a></li><li><a onclick="navigate('about')">About Us</a></li><li><a onclick="navigate('departments')">Departments</a></li><li><a onclick="navigate('contact')">Contact</a></li></ul></div>
+      <div class="footer-col"><h4>Departments</h4><ul><li><a onclick="navigate('departments')">Cardiology</a></li><li><a onclick="navigate('departments')">Neurology</a></li><li><a onclick="navigate('departments')">Pediatrics</a></li><li><a onclick="navigate('departments')">Orthopedics</a></li><li><a onclick="navigate('departments')">Emergency</a></li></ul></div>
+      <div class="footer-col"><h4>Finance</h4><ul><li><a onclick="navigate('lending')">Medical Lending Portal</a></li><li><a href="#">Smart Contract Docs</a></li><li><a href="#">Cardano Explorer</a></li><li><a href="#">Privacy Policy</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Coxygen Medical Center. All rights reserved.</span>
+      <div class="footer-badge"><i class="fas fa-code-branch"></i> Secured on Cardano Blockchain</div>
+    </div>
+  </footer>
+
+  <!-- MODALS (Blockchain confirm/loading) -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-box">
+      <h3><i class="fas fa-file-contract"></i> Confirm Transaction</h3>
+      <p id="modalMessage" style="font-size:14px;color:var(--slate);">Review the transaction details below:</p>
+      <div class="modal-details" id="modalDetails"></div>
+      <div class="modal-actions">
+        <button class="btn btn-success" id="confirmAction"><i class="fas fa-check"></i> Confirm</button>
+        <button class="btn" style="background:var(--off-white);color:var(--slate);" id="cancelAction"><i class="fas fa-times"></i> Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay loading-modal" id="loadingModal">
+    <div class="modal-box" style="text-align:center;max-width:360px;">
+      <div class="loading-spinner"></div>
+      <h3 style="justify-content:center;margin-bottom:8px;">Processing…</h3>
+      <p id="loadingMessage" style="font-size:14px;color:var(--slate);">Building and signing your transaction…</p>
+    </div>
+  </div>
+
+  <!-- Notification Panel -->
+  <div class="notif-panel" id="notifPanel">
+    <div class="notif-panel-head">
+      <h4><i class="fas fa-bell"></i> Notifications</h4>
+      <div class="notif-head-right">
+        <span class="notif-mark-all" onclick="markAllRead()">Mark all read</span>
+        <div class="notif-close-btn" onclick="closeNotifPanel()"><i class="fas fa-times"></i></div>
+      </div>
+    </div>
+    <div class="notif-tabs">
+      <div class="notif-tab active" data-tab="all"     onclick="switchTab('all')">All</div>
+      <div class="notif-tab"        data-tab="lending"  onclick="switchTab('lending')">Lending</div>
+      <div class="notif-tab"        data-tab="general"  onclick="switchTab('general')">General</div>
+      <div class="notif-tab"        data-tab="system"   onclick="switchTab('system')">System</div>
+    </div>
+    <div class="notif-list" id="notifList"></div>
+    <div class="notif-panel-footer"><a href="#"><i class="fas fa-history"></i> View all notifications</a></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       BLOCKCHAIN SCRIPT (module)
+  ════════════════════════════════════════════════════════════ -->
+  <script type="module">
+    import { Lucid, Blockfrost, C, Data, fromText, toUnit } from "https://unpkg.com/lucid-cardano@0.10.11/web/mod.js";
+
+    let lucid, walletApi, isConnected = false;
+
+    const SCRIPT_CBOR   = "your_plutus_script_cbor_here";
+    const BLOCKFROST_KEY = "your_blockfrost_project_id";
+    const NETWORK        = "Preprod";
+
+    const MedicalDatum = Data.Object({ patient: Data.Bytes(), provider: Data.Bytes(), bill: Data.Integer(), interest: Data.Integer() });
+
+    async function initLucid() {
+      try {
+        lucid = await Lucid.new(new Blockfrost(`https://cardano-${NETWORK.toLowerCase()}.blockfrost.io/api/v0`, BLOCKFROST_KEY), NETWORK);
+        log("[System] Lucid initialized — " + NETWORK + " network.");
+      } catch(e) { log("[Error] Lucid init failed: " + e.message, 'err'); }
+    }
+
+    window.connectWallet = async function() {
+      if (!lucid) await initLucid();
+      try {
+        const wallet = window.cardano?.nami || window.cardano?.eternl || window.cardano?.flint;
+        if (!wallet) { log("[Error] No Cardano wallet found. Please install Nami, Eternl, or Flint.", 'err'); return; }
+        walletApi = await wallet.enable();
+        lucid.selectWallet(walletApi);
+        const addr    = await lucid.wallet.address();
+        const utxos   = await lucid.wallet.getUtxos();
+        const lovelace = utxos.reduce((s, u) => s + Number(u.assets?.lovelace || 0n), 0);
+        const ada     = (lovelace / 1_000_000).toFixed(2);
+        isConnected   = true;
+        document.getElementById('walletAddress').textContent = addr.slice(0,20) + "…" + addr.slice(-8);
+        document.getElementById('network').textContent       = NETWORK;
+        document.getElementById('walletBalance').textContent = ada + " ADA";
+        document.getElementById('connectBtn').style.display    = 'none';
+        document.getElementById('disconnectBtn').style.display = 'inline-flex';
+        document.getElementById('walletPill').classList.add('visible');
+        document.getElementById('connect').innerHTML = `<i class="fas fa-circle" style="color:var(--success);font-size:8px;"></i> Connected`;
+        document.getElementById('connect').style.background = 'rgba(16,185,129,.15)';
+        document.getElementById('connect').style.border     = '1px solid rgba(16,185,129,.35)';
+        document.getElementById('connect').style.color      = '#34d399';
+        if (SCRIPT_CBOR !== "your_plutus_script_cbor_here") {
+          const script = { type: "PlutusV2", script: SCRIPT_CBOR };
+          const scriptAddr = lucid.utils.validatorToAddress(script);
+          document.getElementById('scriptAddress').textContent = scriptAddr.slice(0,24) + "…";
+        }
+        log("[✓] Wallet connected: " + addr.slice(0,20) + "… | Balance: " + ada + " ADA", 'ok');
+        showToast('success', 'Wallet Connected', 'Your Cardano wallet is now linked to the Medical Lending Portal.');
+        addNotification('green', 'fas fa-wallet', 'Wallet Connected', 'Your wallet is linked. You can now open medical credit lines.', 'just now', 'lending');
+      } catch(e) { log("[Error] Wallet connection failed: " + e.message, 'err'); }
+    };
+
+    window.disconnectWallet = function() {
+      walletApi = null; isConnected = false;
+      document.getElementById('walletAddress').textContent = 'Connect your wallet to begin';
+      document.getElementById('network').textContent       = 'Not connected';
+      document.getElementById('walletBalance').textContent = '—';
+      document.getElementById('connectBtn').style.display    = 'inline-flex';
+      document.getElementById('disconnectBtn').style.display = 'none';
+      document.getElementById('walletPill').classList.remove('visible');
+      document.getElementById('connect').innerHTML  = `<i class="fas fa-plug"></i> Connect Wallet`;
+      document.getElementById('connect').style.cssText = '';
+      document.getElementById('connect').className = 'btn-connect-nav';
+      log("[System] Wallet disconnected.", 'warn');
+    };
+
+    window.openCredit = async function() {
+      if (!isConnected) { log("[!] Please connect your wallet first.", 'warn'); return; }
+      const collateral = parseFloat(document.getElementById('collateral').value) || 0;
+      const bill       = parseFloat(document.getElementById('billAmount').value)  || 0;
+      const interest   = parseFloat(document.getElementById('interest').value)    || 0;
+      const provider   = document.getElementById('lender').value.trim();
+      if (!provider) { log("[!] Please enter the medical provider wallet address.", 'warn'); return; }
+      if (collateral <= 0 || bill <= 0 || interest <= 0) { log("[!] Please fill in valid amounts.", 'warn'); return; }
+      if (bill > collateral) { log("[!] Bill amount exceeds collateral limit.", 'warn'); return; }
+      showModal('confirm', `Open Medical Credit Line`, `<strong>Collateral to Lock:</strong> ${collateral} ADA<br><strong>Bill Payment:</strong> ${bill} ADA → Provider<br><strong>Interest:</strong> ${interest} ADA<br><strong>Total Repayable:</strong> ${(bill+interest).toFixed(2)} ADA<br><strong>Provider:</strong> ${provider.slice(0,18)}…`, async () => {
+        showLoading("Building open-credit transaction…");
+        try {
+          const addr    = await lucid.wallet.address();
+          const pkh     = lucid.utils.getAddressDetails(addr).paymentCredential.hash;
+          const provPkh = provider.startsWith('addr') ? lucid.utils.getAddressDetails(provider).paymentCredential.hash : provider;
+          const datum   = Data.to({ patient: pkh, provider: provPkh, bill: BigInt(Math.round(bill*1e6)), interest: BigInt(Math.round(interest*1e6)) }, MedicalDatum);
+          const script  = { type: "PlutusV2", script: SCRIPT_CBOR };
+          const scriptAddr = lucid.utils.validatorToAddress(script);
+          const tx = await lucid.newTx().payToContract(scriptAddr, { inline: datum }, { lovelace: BigInt(Math.round(collateral*1e6)) }).payToAddress(provider, { lovelace: BigInt(Math.round(bill*1e6)) }).complete();
+          const signed = await tx.sign().complete();
+          const txHash = await signed.submit();
+          hideLoading(); log(`[✓] Credit Opened! TxHash: ${txHash}`, 'ok');
+        } catch(e) { hideLoading(); log("[Error] " + e.message, 'err'); }
+      });
+    };
+
+    window.repayCredit = async function() {
+      if (!isConnected) { log("[!] Please connect your wallet first.", 'warn'); return; }
+      const bill     = parseFloat(document.getElementById('billAmount').value) || 0;
+      const interest = parseFloat(document.getElementById('interest').value)   || 0;
+      showModal('confirm', `Repay Medical Credit`, `<strong>Repayment Amount:</strong> ${(bill+interest).toFixed(2)} ADA<br><strong>Collateral Returned:</strong> ${document.getElementById('collateral').value} ADA<br><strong>Net Cost:</strong> ${interest} ADA interest`, async () => {
+        showLoading("Building repayment transaction…");
+        try {
+          const addr   = await lucid.wallet.address();
+          const script = { type: "PlutusV2", script: SCRIPT_CBOR };
+          const scriptAddr = lucid.utils.validatorToAddress(script);
+          const utxos  = await lucid.utxosAt(scriptAddr);
+          if (!utxos.length) throw new Error("No open credit utxos found at script address.");
+          const utxo    = utxos[0];
+          const redeemer = Data.to(new Constr(0, []));
+          const tx = await lucid.newTx().collectFrom([utxo], redeemer).attachSpendingValidator(script).payToAddress(addr, { lovelace: utxo.assets.lovelace }).complete();
+          const signed = await tx.sign().complete();
+          const txHash = await signed.submit();
+          hideLoading(); log(`[✓] Credit Repaid! TxHash: ${txHash}`, 'ok');
+        } catch(e) { hideLoading(); log("[Error] " + e.message, 'err'); }
+      });
+    };
+
+    function log(msg, type='') {
+      const container = document.getElementById('log');
+      const now = new Date().toLocaleTimeString();
+      const cls = type==='err' ? 'log-err' : type==='ok' ? 'log-ok' : type==='warn' ? 'log-warn' : 'log-msg';
+      const el = document.createElement('div');
+      el.className = 'log-entry';
+      el.innerHTML = `<span class="log-time">[${now}]</span><span class="${cls}">${msg}</span>`;
+      container.appendChild(el);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function showModal(type, title, body, onConfirm) {
+      const modal = document.getElementById('confirmModal');
+      document.querySelector('#confirmModal h3').childNodes[1].textContent = ' ' + title;
+      document.getElementById('modalDetails').innerHTML = body;
+      modal.classList.add('open');
+      document.getElementById('confirmAction').onclick = () => { modal.classList.remove('open'); onConfirm(); };
+      document.getElementById('cancelAction').onclick  = () => { modal.classList.remove('open'); log("[Cancelled] Transaction cancelled by user.", 'warn'); };
+    }
+    function showLoading(msg) { document.getElementById('loadingMessage').textContent = msg || 'Processing…'; document.getElementById('loadingModal').classList.add('open'); }
+    function hideLoading()    { document.getElementById('loadingModal').classList.remove('open'); }
+
+    function updateSummary() {
+      const bill = parseFloat(document.getElementById('billAmount')?.value) || 0;
+      const int  = parseFloat(document.getElementById('interest')?.value)   || 0;
+      const col  = parseFloat(document.getElementById('collateral')?.value) || 0;
+      const rate = bill > 0 ? ((int/bill)*100).toFixed(1) : '—';
+      const t = document.getElementById('totalRepay'); const c = document.getElementById('collateralReturn'); const r = document.getElementById('effectiveRate');
+      if (t) t.textContent = (bill+int).toFixed(2) + ' ADA';
+      if (c) c.textContent = col + ' ADA';
+      if (r) r.textContent = rate + '%';
+    }
+    document.addEventListener('input', updateSummary);
+    updateSummary();
+    initLucid();
+  </script>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       MAIN SCRIPT
+  ════════════════════════════════════════════════════════════ -->
+  <script>
+    /* ── NAVIGATION ── */
+    const pages = ['home','about','departments','lending','contact'];
+    window.navigate = function(page) {
+      pages.forEach(p => { const el = document.getElementById(`page-${p}`); if (el) el.classList.toggle('active', p===page); });
+      document.querySelectorAll('[data-page]').forEach(a => a.classList.toggle('active', a.getAttribute('data-page')===page));
+      window.scrollTo({ top:0, behavior:'smooth' });
+      setTimeout(initCounters, 100);
+    };
+
+    window.addEventListener('scroll', () => { document.getElementById('mainNav').classList.toggle('scrolled', window.scrollY > 40); });
+
+    function toggleMobileNav() { document.getElementById('mobileNav').classList.toggle('open'); }
+
+    /* ── AUTH MODALS ── */
+    window.openAuthModal = function(type) {
+      // close other first
+      document.getElementById('loginModal').classList.remove('open');
+      document.getElementById('registerModal').classList.remove('open');
+      document.getElementById(type === 'login' ? 'loginModal' : 'registerModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    };
+    window.closeAuthModal = function(type) {
+      document.getElementById(type === 'login' ? 'loginModal' : 'registerModal').classList.remove('open');
+      document.body.style.overflow = '';
+    };
+
+    // Close on overlay click
+    ['loginModal','registerModal'].forEach(id => {
+      document.getElementById(id).addEventListener('click', function(e) {
+        if (e.target === this) { this.classList.remove('open'); document.body.style.overflow = ''; }
+      });
+    });
+
+    // Escape key
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { ['loginModal','registerModal'].forEach(id => document.getElementById(id).classList.remove('open')); document.body.style.overflow = ''; }
+    });
+
+    window.togglePwd = function(inputId, btn) {
+      const inp = document.getElementById(inputId);
+      const showing = inp.type === 'text';
+      inp.type = showing ? 'password' : 'text';
+      btn.innerHTML = `<i class="fas fa-eye${showing ? '' : '-slash'}"></i>`;
+    };
+
+    window.handleLogin = function() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const pwd   = document.getElementById('loginPassword').value;
+      if (!email || !pwd) { showToast('error','Missing Fields','Please enter your email and password.'); return; }
+      // Simulate login
+      closeAuthModal('login');
+      showToast('success','Welcome Back!',`Signed in as ${email}`);
+      addNotification('green','fas fa-user-check','Login Successful',`Welcome back, ${email.split('@')[0]}!`,'just now','system');
+    };
+
+    window.handleRegister = function() {
+      const first = document.getElementById('regFirst').value.trim();
+      const last  = document.getElementById('regLast').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      const pwd   = document.getElementById('regPassword').value;
+      const terms = document.getElementById('agreeTerms').checked;
+      if (!first || !last || !email || !phone || !pwd) { showToast('error','Missing Fields','Please complete all fields.'); return; }
+      if (pwd.length < 8) { showToast('error','Weak Password','Password must be at least 8 characters.'); return; }
+      if (!terms) { showToast('warning','Terms Required','Please agree to the Terms of Service.'); return; }
+      closeAuthModal('register');
+      showToast('success','Account Created!',`Welcome to Coxygen, ${first}! Your account is ready.`);
+      addNotification('blue','fas fa-user-plus','Registration Successful',`Your patient account has been created. Connect your wallet to access Medical Lending.`,'just now','system');
+    };
+
+    window.handleForgot = function() {
+      showToast('info','Password Reset','A reset link will be sent to your email address.');
+    };
+
+    /* ── CONTACT FORM ── */
+    function submitContactForm() {
+      const inputs = document.querySelectorAll('#page-contact .form-input');
+      let valid = true;
+      inputs.forEach(i => { if (!i.value.trim()) { i.style.borderColor='var(--danger)'; valid=false; } else { i.style.borderColor=''; } });
+      if (valid) {
+        showToast('success','Message Sent!','Our team will contact you within 24 hours.');
+        inputs.forEach(i => i.value='');
+        addNotification('navy','fas fa-envelope','Contact Form Submitted','Your enquiry has been received. We\'ll respond within 24 hours.','just now','general');
+      }
+    }
+
+    /* ══ ROLLING COUNTER SYSTEM ══ */
+    function animateCounter(el, target, suffix, duration) {
+      const start = performance.now();
+      function easeOutExpo(t) { return t===1?1:1-Math.pow(2,-10*t); }
+      const isDecimal = String(target).includes('.');
+      const decimals  = isDecimal ? String(target).split('.')[1].length : 0;
+      function tick(now) {
+        const p = Math.min((now-start)/duration,1), e = easeOutExpo(p), cur = target*e;
+        el.textContent = (isDecimal?cur.toFixed(decimals):Math.floor(cur).toLocaleString())+suffix;
+        if (p<1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function buildDigitRoller(el, targetStr, duration) {
+      el.innerHTML=''; el.style.display='inline-flex'; el.style.alignItems='baseline';
+      targetStr.split('').forEach((ch,i) => {
+        if (!/\d/.test(ch)) {
+          const s=document.createElement('span'); s.textContent=ch; s.style.display='inline-block';
+          s.style.animation=`fadeInChar .4s ${i*60}ms both`; el.appendChild(s); return;
+        }
+        const dv=parseInt(ch);
+        const col=document.createElement('div'); col.style.cssText='display:flex;flex-direction:column;line-height:1;overflow:hidden;height:1em;';
+        const inner=document.createElement('div'); inner.style.cssText='display:flex;flex-direction:column;';
+        for(let d=0;d<=9;d++){ const s=document.createElement('span'); s.textContent=d; s.style.lineHeight='1'; inner.appendChild(s); }
+        col.appendChild(inner); el.appendChild(col);
+        setTimeout(() => { inner.style.transition=`transform ${duration}ms cubic-bezier(0.22,0.68,0,1.2)`; inner.style.transform=`translateY(${-(dv/10)*100}%)`; }, 80+i*80);
+      });
+    }
+
+    function initCounters() {
+      const obs = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const el=entry.target, raw=el.dataset.count, dur=parseInt(el.dataset.dur||'1800'), type=el.dataset.type||'roller';
+          if (type==='roller') buildDigitRoller(el, raw, dur);
+          else { const m=raw.match(/^([\d.]+)(.*)/); if(m) animateCounter(el,parseFloat(m[1]),m[2]||'',dur); }
+          obs.unobserve(el);
+        });
+      }, { threshold:0.4 });
+      document.querySelectorAll('[data-count]').forEach(el => obs.observe(el));
+    }
+
+    const ss=document.createElement('style');
+    ss.textContent=`@keyframes fadeInChar { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }`;
+    document.head.appendChild(ss);
+
+    /* ══ NOTIFICATION SYSTEM ══ */
+    let notifications=[], notifPanelOpen=false, activeTab='all', notifIdCounter=0;
+    const NOTIF_STORE=[
+      {id:++notifIdCounter,icon:'fas fa-heartbeat',iconType:'blue',  title:'Welcome to Coxygen Medical',    desc:'Your account is ready. Connect your Cardano wallet to access Medical Lending.',category:'system',time:'2 min ago',unread:true},
+      {id:++notifIdCounter,icon:'fas fa-hand-holding-usd',iconType:'green',title:'Medical Lending Available',desc:'Unlock instant healthcare credit using Cardano smart contracts — no credit checks required.',category:'lending',time:'10 min ago',unread:true},
+      {id:++notifIdCounter,icon:'fas fa-stethoscope',iconType:'navy', title:'New Department: Oncology',      desc:'Our Cancer Centre is now accepting new patients. Book a consultation today.',category:'general',time:'1 hr ago',unread:true},
+      {id:++notifIdCounter,icon:'fas fa-shield-alt', iconType:'blue', title:'Smart Contract Audited',        desc:'Our Plutus V2 medical lending script passed its third-party security audit with zero critical findings.',category:'lending',time:'3 hrs ago',unread:false},
+      {id:++notifIdCounter,icon:'fas fa-ambulance',  iconType:'red',  title:'Emergency Dept at Full Capacity',desc:'ED wait times may be elevated. Non-critical cases please use our Walk-In clinic.',category:'general',time:'5 hrs ago',unread:false},
+    ];
+    notifications=[...NOTIF_STORE];
+
+    function renderNotifPanel() {
+      const panel=document.getElementById('notifPanel'); if(!panel) return;
+      const filtered=activeTab==='all'?notifications:notifications.filter(n=>n.category===activeTab);
+      const listEl=panel.querySelector('.notif-list');
+      if(!filtered.length){ listEl.innerHTML=`<div class="notif-empty"><i class="fas fa-bell-slash"></i><p>No notifications in this category</p></div>`; return; }
+      listEl.innerHTML=filtered.map((n,idx)=>`
+        <div class="notif-item ${n.unread?'unread':''}" style="animation-delay:${idx*50}ms" onclick="markRead(${n.id})">
+          <div class="notif-icon ${n.iconType}"><i class="${n.icon}"></i></div>
+          <div class="notif-body"><div class="ntitle">${n.title}</div><div class="ndesc">${n.desc}</div><div class="ntime"><i class="fas fa-clock"></i> ${n.time}</div></div>
+          <button class="notif-dismiss" onclick="event.stopPropagation();dismissNotif(${n.id})"><i class="fas fa-times"></i></button>
+        </div>`).join('');
+    }
+
+    function updateBadge() {
+      const badge=document.getElementById('notifBadge'), count=notifications.filter(n=>n.unread).length;
+      badge.textContent=count>9?'9+':count; badge.classList.toggle('show',count>0);
+    }
+    function toggleNotifPanel()  { notifPanelOpen=!notifPanelOpen; document.getElementById('notifPanel').classList.toggle('open',notifPanelOpen); if(notifPanelOpen) renderNotifPanel(); }
+    function closeNotifPanel()   { notifPanelOpen=false; document.getElementById('notifPanel').classList.remove('open'); }
+    function markRead(id)        { const n=notifications.find(x=>x.id===id); if(n&&n.unread){n.unread=false;updateBadge();renderNotifPanel();} }
+    function markAllRead()       { notifications.forEach(n=>n.unread=false); updateBadge(); renderNotifPanel(); }
+    function dismissNotif(id)    { notifications=notifications.filter(n=>n.id!==id); updateBadge(); renderNotifPanel(); }
+    function switchTab(tab)      { activeTab=tab; document.querySelectorAll('.notif-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab)); renderNotifPanel(); }
+
+    function addNotification(iconType,icon,title,desc,time,category) {
+      const n={id:++notifIdCounter,icon,iconType,title,desc,time:time||'just now',category:category||'general',unread:true};
+      notifications.unshift(n); updateBadge();
+      const badge=document.getElementById('notifBadge'); badge.classList.remove('pulse'); requestAnimationFrame(()=>badge.classList.add('pulse'));
+      if(notifPanelOpen) renderNotifPanel();
+    }
+
+    document.addEventListener('click', e => {
+      const panel=document.getElementById('notifPanel'), bell=document.getElementById('notifBell');
+      if(notifPanelOpen&&panel&&!panel.contains(e.target)&&!bell.contains(e.target)) closeNotifPanel();
+    });
+
+    /* ══ TOAST SYSTEM ══ */
+    function showToast(type,title,msg,duration) {
+      const dur=duration||4500;
+      const icons={success:'fas fa-check-circle',error:'fas fa-exclamation-circle',warning:'fas fa-exclamation-triangle',info:'fas fa-info-circle'};
+      const toast=document.createElement('div'); toast.className=`toast ${type||''}`;
+      toast.style.setProperty('--toast-dur',(dur/1000)+'s');
+      toast.innerHTML=`<div class="toast-icon"><i class="${icons[type]||icons.info}"></i></div><div class="toast-content"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div><button class="toast-close" onclick="removeToast(this.closest('.toast'))"><i class="fas fa-times"></i></button><div class="toast-progress"></div>`;
+      document.getElementById('toastContainer').appendChild(toast);
+      setTimeout(()=>removeToast(toast),dur);
+    }
+    function removeToast(toast) { if(!toast||!toast.parentNode) return; toast.classList.add('removing'); setTimeout(()=>toast.parentNode&&toast.parentNode.removeChild(toast),350); }
+
+    /* ══ INIT ══ */
+    updateBadge();
+    initCounters();
+
+    setTimeout(()=>showToast('info','Welcome to Coxygen','Connect your Cardano wallet to access Medical Lending.', 6000), 1200);
+    setTimeout(()=>{ addNotification('yellow','fas fa-calendar-check','Appointment Reminder','Your Cardiology follow-up is scheduled for tomorrow at 10:00 AM.','just now','general'); showToast('warning','Appointment Tomorrow','Cardiology follow-up at 10:00 AM — don\'t forget!',7000); }, 8000);
+    setTimeout(()=>addNotification('blue','fas fa-link','Smart Contract Ready','Medical Lending smart contract is live on Cardano Preprod. Connect wallet to begin.','just now','lending'), 14000);
+  </script>
+
+<script type="module" src="app.js" defer></script>
 </body>
 </html>
